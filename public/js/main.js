@@ -1,0 +1,1 @@
+console.log('EspetinhoPro Web carregado com sucesso!');

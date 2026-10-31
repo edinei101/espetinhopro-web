@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EspetinhoPro - <%= titulo %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .card-painel { border-radius: 12px; }
+    .item-comanda-lista {
+      cursor: pointer;
+      transition: background-color 0.15s ease-in-out;
+    }
+    .item-comanda-lista:hover {
+      background-color: #f1f3f5;
+    }
+    .item-comanda-lista.ativa {
+      background-color: #e7f1ff;
+      border-left: 5px solid #0d6efd !important;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/_navbar') %>
+
+  <div class="d-flex">
+    <%- include('../partials/_sidebar') %>
+
+    <main class="flex-grow-1 p-4">
+
+      <% if (typeof caixaBloqueado !== 'undefined' && caixaBloqueado) { %>
+        <!-- BLOQUEIO PARA COLABORADORES QUE NÃO SÃO O TITULAR DO CAIXA -->
+        <div class="row justify-content-center my-5">
+          <div class="col-12 col-md-8 col-lg-6 text-center">
+            <div class="card shadow border-0 rounded-4 p-5 bg-white">
+              <div class="mb-4">
+                <span class="badge bg-warning-subtle text-warning p-4 rounded-circle border border-warning">
+                  <i class="fa-solid fa-cash-register fa-4x text-warning"></i>
+                </span>
+              </div>
+              <h3 class="fw-bold text-dark mb-2">Caixa em Operação</h3>
+              <p class="text-secondary fs-6 mb-4">
+                Já existe um turno de caixa aberto no momento sob responsabilidade de:
+                <br>
+                <strong class="text-dark fs-5">
+                  <i class="fa-solid fa-user-lock text-danger me-1"></i><%= nomeOperadorAtual %>
+                </strong>
+              </p>
+              <div class="alert alert-light border small text-muted text-start mb-4">
+                <i class="fa-solid fa-circle-info text-primary me-2"></i>
+                Por normas de auditoria e segurança da gaveta, cada colaborador opera exclusivamente o seu próprio caixa. Apenas o responsável titular ou a gerência podem acessar e operar este painel.
+              </div>
+              <div>
+                <a href="/inicio" class="btn btn-secondary px-4 py-2 fw-semibold">
+                  <i class="fa-solid fa-house me-2"></i>Voltar ao Início
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } else { %>
+        <!-- PAINEL OPERACIONAL NORMAL DO CAIXA -->
+
+        <!-- Topo: Título do Caixa, Botões de Operação e Status do Turno -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+          <div>
+            <h2 class="fw-bold mb-0 text-dark">
+              <i class="fa-solid fa-cash-register text-success me-2"></i>Frente de Caixa
+            </h2>
+            <small class="text-muted">
+              Cobrança de contas, taxa de serviço (<%= taxaServicoPadrao %>%) e fechamento de turno
+              <% if (caixaAtual) { %>
+                &bull; <strong class="text-dark">Operador Atual:</strong> <%= nomeOperadorAtual %>
+              <% } %>
+            </small>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <% if (caixaAtual) { %>
+              <!-- Botão de Venda Avulsa (Apenas o titular opera) -->
+              <% if (ehDonoDoCaixa) { %>
+                <button class="btn btn-warning text-dark fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalVendaAvulsaBalcao">
+                  <i class="fa-solid fa-candy-cane fa-lg"></i>
+                  <span>+ Venda Avulsa (Doces)</span>
+                </button>
+              <% } %>
+
+              <!-- Botão de Fechar Caixa / Intervenção -->
+              <% if (podeEncerrar) { %>
+                <button class="btn <%= ehDonoDoCaixa ? 'btn-danger text-white' : 'btn-warning text-dark' %> fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalFecharCaixa">
+                  <i class="fa-solid <%= ehDonoDoCaixa ? 'fa-lock' : 'fa-triangle-exclamation' %> fa-lg"></i>
+                  <span><%= ehDonoDoCaixa ? 'Encerrar Turno / Fechar Caixa' : 'Encerrar Caixa (Intervenção)' %></span>
+                </button>
+              <% } %>
+
+              <div class="badge bg-success-subtle text-success border border-success p-2 px-3 fs-6">
+                <i class="fa-solid fa-lock-open me-1"></i> Caixa Aberto (#<%= caixaAtual.id %>)
+              </div>
+            <% } else { %>
+              <div class="badge bg-danger-subtle text-danger border border-danger p-2 px-3 fs-6">
+                <i class="fa-solid fa-lock me-1"></i> Caixa Fechado
+              </div>
+              <button class="btn btn-warning fw-bold px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAbrirCaixa">
+                <i class="fa-solid fa-key me-1"></i> Abrir Caixa do Dia
+              </button>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Alerta quando o usuário não é o titular, mas é Gerente/Admin em modo de supervisão -->
+        <% if (caixaAtual && !ehDonoDoCaixa) { %>
+          <div class="alert alert-warning shadow-sm border-warning d-flex align-items-center gap-3 p-3 mb-4">
+            <i class="fa-solid fa-eye fa-2x text-warning-emphasis"></i>
+            <div>
+              <h6 class="fw-bold mb-0 text-warning-emphasis">Modo de Supervisão / Auditoria Ativo</h6>
+              <small class="text-dark">
+                Este caixa foi aberto pelo colaborador <strong><%= nomeOperadorAtual %></strong>. Você está visualizando em modo gerencial. Lançamentos de pagamentos e vendas avulsas estão bloqueados para sua conta; utilize o botão de intervenção caso precise encerrar o turno do titular.
+              </small>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- ALERTA DE BLOQUEIO QUANDO O CAIXA ESTÁ FECHADO -->
+        <% if (!caixaAtual) { %>
+          <div class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 p-3 mb-4">
+            <i class="fa-solid fa-triangle-exclamation fa-2x"></i>
+            <div>
+              <h5 class="fw-bold mb-0">Nenhum turno de caixa aberto no momento!</h5>
+              <small>O registro de pagamentos e a venda de doces estão bloqueados. Clique no botão <strong>"Abrir Caixa do Dia"</strong> para iniciar as operações.</small>
+            </div>
+          </div>
+        <% } %>
+
+        <div class="row g-4">
+          <!-- Coluna Esquerda: Comandas Aguardando Caixa -->
+          <div class="col-12 col-lg-4">
+            <div class="card card-painel shadow-sm border-0 bg-white">
+              <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                  <i class="fa-solid fa-bell text-danger me-2"></i>Aguardando Caixa (<%= comandasAguardando.length %>)
+                </h5>
+                <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload();" title="Recarregar fila">
+                  <i class="fa-solid fa-rotate"></i>
+                </button>
+              </div>
+              <div class="card-body p-0" style="max-height: 650px; overflow-y: auto;">
+                <% if (comandasAguardando.length === 0) { %>
+                  <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-circle-check fa-3x text-success mb-2"></i>
+                    <p class="mb-0 fw-bold">Nenhuma mesa aguardando cobrança.</p>
+                    <small>As contas só aparecem aqui após o garçom solicitar o fechamento.</small>
+                  </div>
+                <% } else { %>
+                  <div class="list-group list-group-flush">
+                    <% comandasAguardando.forEach(c => { %>
+                      <a href="/caixa?comanda_id=<%= c.id %>" class="list-group-item list-group-item-action p-3 border-bottom item-comanda-lista <%= comandaSelecionada && comandaSelecionada.id === c.id ? 'ativa' : '' %>">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                          <span class="fw-bold fs-5 text-dark">
+                            <% if (c.tipo === 'MESA') { %>
+                              <i class="fa-solid fa-chair text-danger me-1"></i> Mesa <%= c.mesa_numero %>
+                            <% } else { %>
+                              <i class="fa-solid fa-cash-register text-primary me-1"></i> Balcão #<%= c.id %>
+                            <% } %>
+                          </span>
+                          <div class="text-end">
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">A PAGAR</small>
+                            <h5 class="fw-bold text-danger mb-0">
+                              R$ <%= Number(c.saldo_restante).toFixed(2).replace('.', ',') %>
+                            </h5>
+                          </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-muted small mt-1">
+                          <span><i class="fa-solid fa-user me-1"></i><%= c.nome_cliente || 'Cliente' %></span>
+                          <% if (Number(c.total_pago) > 0) { %>
+                            <span class="badge bg-warning text-dark">Já Pago: R$ <%= Number(c.total_pago).toFixed(2).replace('.', ',') %></span>
+                          <% } else { %>
+                            <span class="badge bg-danger">FECHADA</span>
+                          <% } %>
+                        </div>
+                      </a>
+                    <% }) %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coluna Direita: Detalhe e Pagamento da Comanda Selecionada -->
+          <div class="col-12 col-lg-8">
+            <% if (!comandaSelecionada) { %>
+              <div class="card card-painel shadow-sm border-0 bg-white text-center py-5">
+                <i class="fa-solid fa-receipt fa-4x text-muted mb-3"></i>
+                <h4 class="text-dark fw-bold">Nenhuma comanda selecionada</h4>
+                <p class="text-muted">Aguarde o garçom solicitar o fechamento de uma mesa ou selecione uma conta ao lado.</p>
+              </div>
+            <% } else { %>
+              <% 
+                const subtotalNum = Number(comandaSelecionada.subtotal) || 0;
+                const totalPagoNum = Number(comandaSelecionada.total_pago) || 0;
+                const taxaInicial = Number(comandaSelecionada.taxa_calculada) || 0;
+                const saldoRestanteInicial = Number(comandaSelecionada.saldo_restante) || 0;
+              %>
+              <div class="card card-painel shadow-sm border-0 bg-white">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                  <div>
+                    <h4 class="fw-bold mb-0 text-dark">
+                      <% if (comandaSelecionada.tipo === 'MESA') { %>
+                        Mesa <%= comandaSelecionada.mesa_numero %> - <span class="text-danger"><%= comandaSelecionada.nome_cliente || 'Cliente' %></span>
+                      <% } else { %>
+                        Comanda Balcão #<%= comandaSelecionada.id %> - <span class="text-primary"><%= comandaSelecionada.nome_cliente || 'Cliente' %></span>
+                      <% } %>
+                    </h4>
+                    <small class="text-muted">Aberta em: <%= new Date(comandaSelecionada.data_abertura).toLocaleString('pt-BR') %></small>
+                  </div>
+                  <div>
+                    <% if (totalPagoNum > 0) { %>
+                      <span class="badge bg-warning text-dark px-3 py-2 fw-bold me-1">PAGAMENTO PARCIAL</span>
+                    <% } %>
+                    <span class="badge bg-danger px-3 py-2 fw-bold">AGUARDANDO QUITAÇÃO</span>
+                  </div>
+                </div>
+
+                <div class="card-body p-4">
+                  <div class="row g-4">
+                    <!-- Espelho dos Itens Consumidos -->
+                    <div class="col-12 col-md-6 border-end">
+                      <h6 class="fw-bold text-secondary text-uppercase mb-3">
+                        <i class="fa-solid fa-list-check me-1"></i>Itens da Conta
+                      </h6>
+                      <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                          <thead class="table-light small">
+                            <tr>
+                              <th>Item</th>
+                              <th class="text-center">Qtd</th>
+                              <th class="text-end">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <% itensComanda.forEach(i => { %>
+                              <tr>
+                                <td>
+                                  <strong class="small"><%= i.produto_nome %></strong>
+                                  <% if (i.categoria_id === 4) { %>
+                                    <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">Doce/Caixa</span>
+                                  <% } %>
+                                  <% if (i.ponto_carne) { %>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;"><%= i.ponto_carne %></small>
+                                  <% } %>
+                                </td>
+                                <td class="text-center"><%= i.quantidade %></td>
+                                <td class="text-end fw-bold">R$ <%= Number(i.valor_total).toFixed(2).replace('.', ',') %></td>
+                              </tr>
+                            <% }) %>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <% if (pagamentosRealizados.length > 0) { %>
+                        <h6 class="fw-bold text-success text-uppercase mt-4 mb-2 small">
+                          <i class="fa-solid fa-clock-rotate-left me-1"></i>Pagamentos Já Realizados
+                        </h6>
+                        <ul class="list-group list-group-flush border rounded mb-3 small">
+                          <% pagamentosRealizados.forEach(p => { %>
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                              <span>
+                                <i class="fa-solid fa-check text-success me-1"></i>
+                                <strong><%= p.forma_pagamento %></strong>
+                                <small class="text-muted d-block"><%= new Date(p.data_pagamento).toLocaleTimeString('pt-BR') %></small>
+                              </span>
+                              <strong class="text-success">R$ <%= Number(p.valor_pago).toFixed(2).replace('.', ',') %></strong>
+                            </li>
+                          <% }) %>
+                        </ul>
+                      <% } %>
+
+                      <div class="p-3 bg-light rounded mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                          <span class="text-muted">Subtotal dos Itens:</span>
+                          <strong class="text-dark">R$ <%= subtotalNum.toFixed(2).replace('.', ',') %></strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1" id="linhaDisplayTaxa">
+                          <span class="text-muted">Taxa de Serviço (<%= taxaServicoPadrao %>%):</span>
+                          <strong class="text-dark" id="displayValorTaxa">R$ <%= taxaInicial.toFixed(2).replace('.', ',') %></strong>
+                        </div>
+                        <% if (totalPagoNum > 0) { %>
+                          <div class="d-flex justify-content-between mb-1 text-success">
+                            <span>Total Já Pago:</span>
+                            <strong>R$ <%= totalPagoNum.toFixed(2).replace('.', ',') %></strong>
+                          </div>
+                        <% } %>
+                        <div class="d-flex justify-content-between pt-2 border-top text-danger">
+                          <span class="fw-bold">Saldo Restante:</span>
+                          <strong class="fs-5" id="saldoRestanteDisplay">R$ <%= saldoRestanteInicial.toFixed(2).replace('.', ',') %></strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Coluna de Ações: Adicionar Doce à Conta E Formulário de Cobrança -->
+                    <div class="col-12 col-md-6">
+                      <!-- 1. Adicionar Doce na Comanda -->
+                      <div class="mb-3">
+                        <button type="button" class="btn btn-outline-warning text-dark btn-sm fw-bold w-100 shadow-sm d-flex justify-content-between align-items-center <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>" data-bs-toggle="collapse" data-bs-target="#boxAdicionarDoceComanda" <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>>
+                          <span><i class="fa-solid fa-plus-circle me-1 text-warning"></i> + Adicionar Doce / Bala nesta Comanda</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+
+                        <div class="collapse mt-2" id="boxAdicionarDoceComanda">
+                          <form action="/caixa/comanda/<%= comandaSelecionada.id %>/adicionar-item" method="POST" class="p-3 bg-light rounded border border-warning">
+                            <small class="fw-bold text-dark d-block mb-2">Escolha o Doce/Bala para somar à conta:</small>
+                            <div class="row g-2 mb-2">
+                              <div class="col-8">
+                                <select name="produto_id" class="form-select form-select-sm" required>
+                                  <option value="" disabled selected>Selecione doce/bala...</option>
+                                  <% produtosCheckout.forEach(p => { %>
+                                    <option value="<%= p.id %>">
+                                      <%= p.nome %> — R$ <%= Number(p.preco).toFixed(2).replace('.', ',') %>
+                                    </option>
+                                  <% }) %>
+                                </select>
+                              </div>
+                              <div class="col-4">
+                                <input type="number" name="quantidade" class="form-control form-control-sm text-center fw-bold" value="1" min="1" required>
+                              </div>
+                            </div>
+                            <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold text-dark shadow-sm">
+                              <i class="fa-solid fa-plus me-1"></i> Acrescentar Doce à Conta
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+
+                      <!-- 2. Formulário de Cobrança -->
+                      <form action="/caixa/comanda/<%= comandaSelecionada.id %>/pagar" method="POST" id="formPagamento">
+                        <input type="hidden" id="subtotalBase" value="<%= subtotalNum %>">
+                        <input type="hidden" id="totalJaPago" value="<%= totalPagoNum %>">
+                        <input type="hidden" id="taxaPercentualPadrao" value="<%= taxaServicoPadrao %>">
+
+                        <h6 class="fw-bold text-secondary text-uppercase mb-2">
+                          <i class="fa-solid fa-credit-card me-1"></i>Lançar Recebimento
+                        </h6>
+
+                        <div class="form-check form-switch mb-3">
+                          <input class="form-check-input" type="checkbox" id="aplicar_taxa" name="aplicar_taxa" checked onchange="aoAlternarTaxa()" <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>>
+                          <label class="form-check-label fw-bold text-dark" for="aplicar_taxa">
+                            Adicionar Taxa de Serviço (<%= taxaServicoPadrao %>%)
+                          </label>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="desconto" class="form-label small fw-bold">Desconto Geral (R$):</label>
+                          <input type="number" step="0.01" min="0" class="form-control" id="desconto" name="desconto" value="<%= Number(comandaSelecionada.desconto).toFixed(2) %>" oninput="recalcularTotal()" <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>>
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="forma_pagamento" class="form-label small fw-bold">Forma de Pagamento:</label>
+                          <select name="forma_pagamento" id="forma_pagamento" class="form-select form-select-lg fw-bold" required onchange="aoMudarFormaPagamento()" <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>>
+                            <option value="DINHEIRO" selected>💵 Dinheiro</option>
+                            <option value="PIX">⚡ PIX</option>
+                            <option value="CARTAO_DEBITO">💳 Cartão de Débito</option>
+                            <option value="CARTAO_CREDITO">💳 Cartão de Crédito</option>
+                          </select>
+                        </div>
+
+                        <div class="mb-3">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="valor_abater" class="form-label small fw-bold mb-0">Valor a Abater da Conta (R$):</label>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small fw-bold <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>" onclick="preencherSaldoTotal()" <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>>
+                              Quitar Restante
+                            </button>
+                          </div>
+                          <input type="number" step="0.01" min="0.01" class="form-control form-control-lg text-center fw-bold text-primary" id="valor_abater" name="valor_abater" value="<%= saldoRestanteInicial.toFixed(2) %>" oninput="recalcularTotal()" required <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>>
+                        </div>
+
+                        <div class="row g-2 mb-3 p-3 bg-light rounded border" id="campoDinheiro">
+                          <div class="col-7">
+                            <label for="dinheiro_entregue" class="form-label small fw-bold">Cédula Entregue (R$):</label>
+                            <input type="number" step="0.01" min="0.01" class="form-control form-control-lg text-center fw-bold" id="dinheiro_entregue" name="dinheiro_entregue" value="<%= saldoRestanteInicial.toFixed(2) %>" oninput="recalcularTotal()" <%= (!caixaAtual || !ehDonoDoCaixa) ? 'disabled' : '' %>>
+                          </div>
+                          <div class="col-5">
+                            <label class="form-label small fw-bold text-danger">Troco:</label>
+                            <div class="form-control form-control-lg text-center fw-bold bg-white text-danger border-danger" id="displayTroco">
+                              R$ 0,00
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="p-3 bg-success-subtle border border-success rounded text-center mb-3" id="boxIndicador">
+                          <small class="text-uppercase fw-bold d-block text-success" id="rotuloIndicador">Saldo Restante na Mesa</small>
+                          <h3 class="fw-bold text-success mb-0" id="displayValorRestante">
+                            R$ 0,00
+                          </h3>
+                          <small class="text-muted d-block mt-1" id="mensagemTipoPagamento">QUITAÇÃO TOTAL: esta operação quita a conta e libera a mesa.</small>
+                        </div>
+
+                        <% if (caixaAtual && ehDonoDoCaixa) { %>
+                          <button type="submit" class="btn btn-success btn-lg w-100 fw-bold py-3 shadow-sm" id="btnConfirmar" onclick="return confirm('Confirmar o recebimento deste valor para esta comanda?');">
+                            <i class="fa-solid fa-check me-2"></i>Registrar Pagamento da Comanda
+                          </button>
+                        <% } else if (caixaAtual && !ehDonoDoCaixa) { %>
+                          <button type="button" class="btn btn-secondary btn-lg w-100 fw-bold py-3 disabled shadow-sm" style="pointer-events: none;">
+                            <i class="fa-solid fa-user-lock me-2"></i>Apenas <%= nomeOperadorAtual %> pode cobrar
+                          </button>
+                        <% } else { %>
+                          <button type="button" class="btn btn-secondary btn-lg w-100 fw-bold py-3 disabled shadow-sm" style="pointer-events: none;">
+                            <i class="fa-solid fa-lock me-2"></i>Abra o Caixa para Cobrar
+                          </button>
+                        <% } %>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+      <% } %>
+
+    </main>
+  </div>
+
+  <!-- MODAL 1: FECHAMENTO DE CAIXA E RATEIO DA TAXA DE SERVIÇO -->
+  <% if (caixaAtual && podeEncerrar) { %>
+    <div class="modal fade" id="modalFecharCaixa" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+          <form action="/caixa/<%= caixaAtual.id %>/fechar" method="POST">
+            <input type="hidden" name="total_taxa_turno" value="<%= resumoTurno ? resumoTurno.totalTaxas : 0 %>">
+
+            <div class="modal-header <%= ehDonoDoCaixa ? 'bg-danger' : 'bg-warning' %> text-<%= ehDonoDoCaixa ? 'white' : 'dark' %>">
+              <h5 class="modal-title fw-bold">
+                <i class="fa-solid fa-cash-register me-2"></i>
+                <%= ehDonoDoCaixa ? 'Encerramento do Turno #' + caixaAtual.id : 'Encerramento Gerencial (Intervenção) #' + caixaAtual.id %>
+              </h5>
+              <button type="button" class="btn-close <%= ehDonoDoCaixa ? 'btn-close-white' : '' %>" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-4">
+              <% if (!ehDonoDoCaixa) { %>
+                <div class="alert alert-warning py-2 small mb-3">
+                  <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                  <strong>Atenção:</strong> Você está encerrando o caixa aberto por <strong><%= nomeOperadorAtual %></strong> em modo de intervenção administrativa.
+                </div>
+              <% } %>
+
+              <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                  <div class="p-3 bg-light border rounded text-center">
+                    <small class="text-muted text-uppercase fw-bold d-block">Fundo Inicial</small>
+                    <h5 class="fw-bold mb-0">R$ <%= Number(caixaAtual.valor_inicial).toFixed(2).replace('.', ',') %></h5>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="p-3 bg-light border rounded text-center">
+                    <small class="text-muted text-uppercase fw-bold d-block">Vendas Líquidas</small>
+                    <h5 class="fw-bold mb-0 text-primary">R$ <%= resumoTurno ? resumoTurno.totalVendas.toFixed(2).replace('.', ',') : '0,00' %></h5>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="p-3 bg-warning-subtle border border-warning rounded text-center">
+                    <small class="text-warning-emphasis text-uppercase fw-bold d-block">Gorjetas Arrecadadas</small>
+                    <h5 class="fw-bold mb-0 text-warning-emphasis">R$ <%= resumoTurno ? resumoTurno.totalTaxas.toFixed(2).replace('.', ',') : '0,00' %></h5>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="p-3 bg-success-subtle border border-success rounded text-center">
+                    <small class="text-success text-uppercase fw-bold d-block">Gaveta Esperada</small>
+                    <h5 class="fw-bold mb-0 text-success">R$ <%= resumoTurno ? resumoTurno.saldoGavetaEsperado.toFixed(2).replace('.', ',') : '0,00' %></h5>
+                  </div>
+                </div>
+              </div>
+
+              <h6 class="fw-bold text-dark text-uppercase border-bottom pb-2 mb-3">
+                <i class="fa-solid fa-hand-holding-dollar text-warning me-2"></i>Destinação da Taxa de Serviço (R$ <%= resumoTurno ? resumoTurno.totalTaxas.toFixed(2).replace('.', ',') : '0,00' %>)
+              </h6>
+
+              <div class="mb-3">
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="modalidade_rateio" id="modoPorGarcom" value="POR_GARCOM" checked onchange="aoMudarModoRateio()">
+                  <label class="form-check-label fw-bold" for="modoPorGarcom">
+                    1. Comissão Individual por Garçom (quem atendeu a mesa)
+                  </label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="modalidade_rateio" id="modoRateioTurno" value="RATEIO_TURNO" onchange="aoMudarModoRateio()">
+                  <label class="form-check-label fw-bold" for="modoRateioTurno">
+                    2. Rateio Igualitário entre Funcionários do Turno
+                  </label>
+                </div>
+              </div>
+
+              <div id="painelPorGarcom" class="p-3 bg-light rounded border mb-4">
+                <small class="fw-bold text-secondary text-uppercase d-block mb-2">Comissões Calculadas:</small>
+                <ul class="list-group list-group-flush small">
+                  <% if (!garconsDoTurno || garconsDoTurno.length === 0) { %>
+                    <li class="list-group-item text-muted">Nenhum garçom atendeu mesas neste turno.</li>
+                  <% } else { %>
+                    <% garconsDoTurno.forEach(g => { %>
+                      <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <span><i class="fa-solid fa-user-tie me-2 text-primary"></i><strong><%= g.nome %></strong></span>
+                        <span class="badge bg-success fs-6">R$ <%= Number(g.taxa_gerada).toFixed(2).replace('.', ',') %></span>
+                      </li>
+                    <% }) %>
+                  <% } %>
+                </ul>
+              </div>
+
+              <div id="painelRateioTurno" class="p-3 bg-light rounded border mb-4 d-none">
+                <small class="fw-bold text-secondary text-uppercase d-block mb-2">Selecione quem trabalhou neste turno para dividir os R$ <%= resumoTurno ? resumoTurno.totalTaxas.toFixed(2).replace('.', ',') : '0,00' %>:</small>
+                <div class="row g-2">
+                  <% if (funcionariosTurno) { %>
+                    <% funcionariosTurno.forEach(f => { %>
+                      <div class="col-6 col-md-4">
+                        <div class="form-check">
+                          <input class="form-check-input check-funcionario" type="checkbox" name="funcionarios_rateio" value="<%= f.id %>" id="func_<%= f.id %>" checked onchange="calcularRateioIgual()">
+                          <label class="form-check-label small" for="func_<%= f.id %>">
+                            <%= f.nome %>
+                          </label>
+                        </div>
+                      </div>
+                    <% }) %>
+                  <% } %>
+                </div>
+                <div class="alert alert-info py-2 px-3 mt-3 mb-0 small">
+                  <i class="fa-solid fa-calculator me-1"></i> Previsão por pessoa: <strong id="previsaoPorPessoa">R$ 0,00</strong>
+                </div>
+              </div>
+
+              <div class="p-3 bg-danger-subtle border border-danger rounded">
+                <label for="valor_final" class="form-label fw-bold text-danger">Conferência Física do Dinheiro em Gaveta (R$):</label>
+                <input type="number" step="0.01" min="0" class="form-control form-control-lg text-center fw-bold" id="valor_final" name="valor_final" value="<%= resumoTurno ? resumoTurno.saldoGavetaEsperado.toFixed(2) : '0.00' %>" required>
+                <small class="text-muted d-block mt-1">Conte as cédulas e moedas físicas da gaveta e digite o valor real encontrado.</small>
+              </div>
+            </div>
+
+            <div class="modal-footer bg-light">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn <%= ehDonoDoCaixa ? 'btn-danger' : 'btn-warning text-dark' %> fw-bold px-4" onclick="return confirm('Confirmar o encerramento deste turno e efetuar os repasses de taxa aos funcionários?');">
+                <i class="fa-solid fa-lock me-1"></i> <%= ehDonoDoCaixa ? 'Confirmar Encerramento' : 'Confirmar Encerramento (Intervenção)' %>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- MODAL 2: VENDA AVULSA DE BALCÃO (DOCES / BALAS) -->
+  <% if (caixaAtual && ehDonoDoCaixa) { %>
+    <div class="modal fade" id="modalVendaAvulsaBalcao" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <form action="/caixa/venda-rapida" method="POST">
+            <div class="modal-header bg-warning text-dark">
+              <h5 class="modal-title fw-bold">
+                <i class="fa-solid fa-candy-cane me-2"></i>Venda Avulsa de Balcão
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="mb-3">
+                <label for="produto_modal_vr" class="form-label fw-bold">Selecione o Produto:</label>
+                <select name="produto_id" id="produto_modal_vr" class="form-select form-select-lg" required onchange="calcularVendaAvulsaModal()">
+                  <option value="" disabled selected>Escolha doce, bala, chiclete...</option>
+                  <% produtosCheckout.forEach(p => { %>
+                    <option value="<%= p.id %>" data-preco="<%= p.preco %>">
+                      <%= p.nome %> — R$ <%= Number(p.preco).toFixed(2).replace('.', ',') %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-4">
+                  <label for="qtd_modal_vr" class="form-label fw-bold">Qtd:</label>
+                  <input type="number" class="form-control form-control-lg text-center fw-bold" id="qtd_modal_vr" name="quantidade" value="1" min="1" required oninput="calcularVendaAvulsaModal()">
+                </div>
+                <div class="col-8">
+                  <label for="forma_modal_vr" class="form-label fw-bold">Forma Pagto:</label>
+                  <select name="forma_pagamento" id="forma_modal_vr" class="form-select form-select-lg fw-bold" required onchange="calcularVendaAvulsaModal()">
+                    <option value="DINHEIRO" selected>💵 Dinheiro</option>
+                    <option value="PIX">⚡ PIX</option>
+                    <option value="CARTAO_DEBITO">💳 Débito</option>
+                    <option value="CARTAO_CREDITO">💳 Crédito</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row g-2 mb-3" id="campoDinheiroModalVR">
+                <div class="col-6">
+                  <label for="dinheiro_modal_vr" class="form-label small fw-bold">Cédula Entregue (R$):</label>
+                  <input type="number" step="0.01" min="0" class="form-control form-control-lg text-center fw-bold" id="dinheiro_modal_vr" name="dinheiro_entregue" value="0.00" oninput="calcularVendaAvulsaModal()">
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-bold text-danger">Troco:</label>
+                  <div class="form-control form-control-lg text-center fw-bold bg-light text-danger" id="troco_modal_vr">
+                    R$ 0,00
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-success-subtle border border-success rounded text-center">
+                <small class="text-uppercase fw-bold text-success d-block">Total a Cobrar</small>
+                <h3 class="fw-bold text-success mb-0" id="total_modal_vr">R$ 0,00</h3>
+              </div>
+            </div>
+            <div class="modal-footer bg-light">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-success fw-bold px-4">
+                <i class="fa-solid fa-check me-1"></i> Confirmar e Registrar Venda
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- MODAL 3: ABERTURA DE CAIXA -->
+  <div class="modal fade" id="modalAbrirCaixa" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <form action="/caixa/abrir" method="POST">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title fw-bold"><i class="fa-solid fa-cash-register me-2"></i>Abertura de Caixa</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <label for="valor_inicial" class="form-label fw-bold">Fundo de Troco Inicial (R$):</label>
+            <input type="number" step="0.01" min="0" class="form-control form-control-lg text-center" id="valor_inicial" name="valor_inicial" value="50.00" required>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning fw-bold px-4">Abrir Turno</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function calcularSaldoRealAtual() {
+      const subtotalEl = document.getElementById('subtotalBase');
+      if (!subtotalEl) return { subtotal: 0, taxa: 0, saldoRestanteReal: 0 };
+
+      const subtotal = parseFloat(subtotalEl.value) || 0;
+      const totalJaPago = parseFloat(document.getElementById('totalJaPago').value) || 0;
+      const percentualTaxa = parseFloat(document.getElementById('taxaPercentualPadrao').value) || 10;
+      const aplicaTaxa = document.getElementById('aplicar_taxa').checked;
+      const desconto = parseFloat(document.getElementById('desconto').value) || 0;
+
+      const taxa = aplicaTaxa ? ((subtotal * percentualTaxa) / 100) : 0;
+      const totalComanda = Math.max(0, subtotal + taxa - desconto);
+      const saldoRestanteReal = Math.max(0, totalComanda - totalJaPago);
+
+      return { subtotal, taxa, saldoRestanteReal };
+    }
+
+    function recalcularTotal() {
+      const subtotalEl = document.getElementById('subtotalBase');
+      if (!subtotalEl) return;
+
+      const { taxa, saldoRestanteReal } = calcularSaldoRealAtual();
+      const formaPagamento = document.getElementById('forma_pagamento').value;
+      const valorAbater = parseFloat(document.getElementById('valor_abater').value) || 0;
+      const dinheiroEntregue = parseFloat(document.getElementById('dinheiro_entregue').value) || 0;
+
+      document.getElementById('displayValorTaxa').innerText = 'R$ ' + taxa.toFixed(2).replace('.', ',');
+      document.getElementById('saldoRestanteDisplay').innerText = 'R$ ' + saldoRestanteReal.toFixed(2).replace('.', ',');
+
+      if (formaPagamento === 'DINHEIRO') {
+        const troco = Math.max(0, dinheiroEntregue - valorAbater);
+        document.getElementById('displayTroco').innerText = 'R$ ' + troco.toFixed(2).replace('.', ',');
+      } else {
+        document.getElementById('displayTroco').innerText = 'R$ 0,00';
+      }
+
+      const amortizacao = Math.min(valorAbater, saldoRestanteReal);
+      const sobraAposEste = Math.max(0, saldoRestanteReal - amortizacao);
+
+      const displayRestante = document.getElementById('displayValorRestante');
+      const rotulo = document.getElementById('rotuloIndicador');
+      const mensagem = document.getElementById('mensagemTipoPagamento');
+      const box = document.getElementById('boxIndicador');
+
+      if (valorAbater < (saldoRestanteReal - 0.001)) {
+        box.className = 'p-3 bg-warning-subtle border border-warning rounded text-center mb-3';
+        rotulo.className = 'text-uppercase fw-bold d-block text-warning-emphasis';
+        displayRestante.className = 'fw-bold text-warning-emphasis mb-0';
+        displayRestante.innerText = 'R$ ' + sobraAposEste.toFixed(2).replace('.', ',');
+        mensagem.innerText = 'PAGAMENTO PARCIAL: ainda faltarão R$ ' + sobraAposEste.toFixed(2).replace('.', ',');
+      } else {
+        box.className = 'p-3 bg-success-subtle border border-success rounded text-center mb-3';
+        rotulo.className = 'text-uppercase fw-bold d-block text-success';
+        displayRestante.className = 'fw-bold text-success mb-0';
+        displayRestante.innerText = 'R$ 0,00';
+        mensagem.innerText = 'QUITAÇÃO TOTAL: esta operação quita a conta e libera a mesa.';
+      }
+    }
+
+    function aoAlternarTaxa() {
+      preencherSaldoTotal();
+    }
+
+    function preencherSaldoTotal() {
+      const { saldoRestanteReal } = calcularSaldoRealAtual();
+      const inputAbater = document.getElementById('valor_abater');
+      const inputDinheiro = document.getElementById('dinheiro_entregue');
+      if (inputAbater) inputAbater.value = saldoRestanteReal.toFixed(2);
+      if (inputDinheiro) inputDinheiro.value = saldoRestanteReal.toFixed(2);
+      recalcularTotal();
+    }
+
+    function aoMudarFormaPagamento() {
+      const forma = document.getElementById('forma_pagamento').value;
+      const campoDinheiro = document.getElementById('campoDinheiro');
+      if (campoDinheiro) {
+        if (forma === 'DINHEIRO') {
+          campoDinheiro.style.display = 'flex';
+        } else {
+          campoDinheiro.style.display = 'none';
+        }
+      }
+      recalcularTotal();
+    }
+
+    function calcularVendaAvulsaModal() {
+      const select = document.getElementById('produto_modal_vr');
+      if (!select) return;
+      const opt = select.options[select.selectedIndex];
+      const preco = opt ? parseFloat(opt.getAttribute('data-preco')) || 0 : 0;
+      const qtd = parseInt(document.getElementById('qtd_modal_vr').value) || 1;
+      const total = preco * qtd;
+
+      document.getElementById('total_modal_vr').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
+
+      const forma = document.getElementById('forma_modal_vr').value;
+      const campoDinheiro = document.getElementById('campoDinheiroModalVR');
+      if (forma === 'DINHEIRO') {
+        campoDinheiro.style.display = 'flex';
+        const entregue = parseFloat(document.getElementById('dinheiro_modal_vr').value) || 0;
+        const troco = Math.max(0, entregue - total);
+        document.getElementById('troco_modal_vr').innerText = 'R$ ' + troco.toFixed(2).replace('.', ',');
+      } else {
+        campoDinheiro.style.display = 'none';
+      }
+    }
+
+    function aoMudarModoRateio() {
+      const modoPorGarcomEl = document.getElementById('modoPorGarcom');
+      if (!modoPorGarcomEl) return;
+      const modoPorGarcom = modoPorGarcomEl.checked;
+      const painelGarcom = document.getElementById('painelPorGarcom');
+      const painelTurno = document.getElementById('painelRateioTurno');
+
+      if (modoPorGarcom) {
+        painelGarcom.classList.remove('d-none');
+        painelTurno.classList.add('d-none');
+      } else {
+        painelGarcom.classList.add('d-none');
+        painelTurno.classList.remove('d-none');
+        calcularRateioIgual();
+      }
+    }
+
+    function calcularRateioIgual() {
+      const totalTaxa = <%= (resumoTurno && resumoTurno.totalTaxas) ? resumoTurno.totalTaxas : 0 %>;
+      const checks = document.querySelectorAll('.check-funcionario:checked');
+      const qtd = checks.length;
+      const valorPorPessoa = qtd > 0 ? (totalTaxa / qtd) : 0;
+      const prevEl = document.getElementById('previsaoPorPessoa');
+      if (prevEl) {
+        prevEl.innerText = 'R$ ' + valorPorPessoa.toFixed(2).replace('.', ',');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (document.getElementById('subtotalBase')) {
+        recalcularTotal();
+      }
+    });
+  </script>
+</body>
+</html>

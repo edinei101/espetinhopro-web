@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EspetinhoPro - <%= titulo %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .card-painel { border-radius: 12px; }
+    .tag-perfil {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/_navbar') %>
+
+  <div class="d-flex">
+    <%- include('../partials/_sidebar') %>
+
+    <main class="flex-grow-1 p-4">
+      <!-- Cabeçalho -->
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+          <h2 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-users-gear text-danger me-2"></i>Equipe & Acessos
+          </h2>
+          <small class="text-muted">Gestão de colaboradores, perfis de acesso e equipe para rateio de gorjetas</small>
+        </div>
+
+        <div class="d-flex gap-2">
+          <!-- Botão Alternador: Apenas Ativos / Mostrar Todos -->
+          <% if (mostrarTodos) { %>
+            <a href="/usuarios" class="btn btn-outline-secondary fw-bold px-3 py-2 d-flex align-items-center gap-2">
+              <i class="fa-solid fa-filter"></i>
+              <span>Mostrar Apenas Ativos</span>
+            </a>
+          <% } else { %>
+            <a href="/usuarios?status=todos" class="btn btn-outline-dark fw-bold px-3 py-2 d-flex align-items-center gap-2">
+              <i class="fa-solid fa-users"></i>
+              <span>Mostrar Todos (incluindo Inativos)</span>
+            </a>
+          <% } %>
+
+          <button class="btn btn-danger fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalNovoUsuario">
+            <i class="fa-solid fa-user-plus fa-lg"></i>
+            <span>+ Novo Colaborador</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Alertas -->
+      <% if (mensagem) { %>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+          <i class="fa-solid fa-circle-check me-2"></i><%= mensagem %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <% if (erro) { %>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i><%= erro %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <!-- Tabela de Usuários -->
+      <div class="card card-painel shadow-sm border-0 bg-white">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-address-book me-2 text-secondary"></i>
+            Colaboradores Cadastrados (<%= usuarios.length %>)
+            <small class="text-muted fs-6 fw-normal ms-2">
+              (Ordenados por Função e Ordem Alfabética)
+            </small>
+          </h5>
+          <span class="badge <%= mostrarTodos ? 'bg-secondary' : 'bg-success' %> px-3 py-2">
+            <%= mostrarTodos ? 'Exibindo Todos' : 'Apenas Ativos' %>
+          </span>
+        </div>
+
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light small">
+                <tr>
+                  <th>Função / Cargo</th>
+                  <th>Colaborador</th>
+                  <th>Login de Acesso</th>
+                  <th class="text-center">Acesso ao Sistema</th>
+                  <th class="text-center">Permissões de Telas</th>
+                  <th class="text-center">Status</th>
+                  <th class="text-center" style="width: 160px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (usuarios.length === 0) { %>
+                  <tr>
+                    <td colspan="7" class="text-center py-5 text-muted">
+                      <i class="fa-solid fa-user-slash fa-3x mb-2 text-secondary"></i>
+                      <p class="mb-0 fw-bold">Nenhum colaborador encontrado com o filtro atual.</p>
+                    </td>
+                  </tr>
+                <% } else { %>
+                  <% usuarios.forEach(u => { %>
+                    <% 
+                      const nomePerfilBaixo = u.perfil_nome.toLowerCase();
+                      const semAcessoPainel = nomePerfilBaixo.includes('entregador') || nomePerfilBaixo.includes('zelador');
+                    %>
+                    <tr class="<%= u.ativo === 0 ? 'table-light text-muted' : '' %>">
+                      <td>
+                        <span class="tag-perfil 
+                          <%= nomePerfilBaixo.includes('admin') || nomePerfilBaixo.includes('gerente') ? 'bg-danger text-white' : '' %>
+                          <%= nomePerfilBaixo.includes('caixa') ? 'bg-success text-white' : '' %>
+                          <%= nomePerfilBaixo.includes('garçom') || nomePerfilBaixo.includes('garcom') ? 'bg-warning text-dark' : '' %>
+                          <%= nomePerfilBaixo.includes('cozinh') ? 'bg-primary text-white' : '' %>
+                          <%= nomePerfilBaixo.includes('bar') ? 'bg-info text-dark' : '' %>
+                          <%= semAcessoPainel ? 'bg-secondary text-white' : '' %>
+                        ">
+                          <i class="fa-solid 
+                            <%= nomePerfilBaixo.includes('admin') ? 'fa-shield-halved' : '' %>
+                            <%= nomePerfilBaixo.includes('caixa') ? 'fa-cash-register' : '' %>
+                            <%= nomePerfilBaixo.includes('garçom') || nomePerfilBaixo.includes('garcom') ? 'fa-utensils' : '' %>
+                            <%= nomePerfilBaixo.includes('cozinh') ? 'fa-fire-burner' : '' %>
+                            <%= nomePerfilBaixo.includes('bar') ? 'fa-wine-glass' : '' %>
+                            <%= nomePerfilBaixo.includes('entregador') ? 'fa-motorcycle' : '' %>
+                            <%= nomePerfilBaixo.includes('zelador') ? 'fa-broom' : '' %>
+                          me-1"></i>
+                          <%= u.perfil_nome %>
+                        </span>
+                      </td>
+
+                      <td>
+                        <strong class="<%= u.ativo === 1 ? 'text-dark' : 'text-muted' %>"><%= u.nome %></strong>
+                        <% if (u.primeiro_acesso === 1 && !semAcessoPainel) { %>
+                          <span class="badge bg-warning-subtle text-warning border border-warning ms-1 small" title="Deverá alterar no próximo login">
+                            Trocar Senha
+                          </span>
+                        <% } %>
+                      </td>
+
+                      <td>
+                        <code><%= u.email %></code>
+                      </td>
+
+                      <td class="text-center">
+                        <% if (semAcessoPainel) { %>
+                          <span class="badge bg-secondary-subtle text-secondary border border-secondary" title="Cadastrado apenas para rateio de gorjeta">
+                            <i class="fa-solid fa-hand-holding-dollar me-1"></i>Apenas Rateio
+                          </span>
+                        <% } else { %>
+                          <span class="badge bg-success-subtle text-success border border-success">
+                            <i class="fa-solid fa-lock-open me-1"></i>Possui Acesso
+                          </span>
+                        <% } %>
+                      </td>
+
+                      <td class="text-center">
+                        <% if (semAcessoPainel) { %>
+                          <span class="text-muted small">-</span>
+                        <% } else { %>
+                          <div class="d-inline-flex gap-1" style="font-size: 0.75rem;">
+                            <% if (u.acesso_salao === 1) { %><span class="badge bg-light text-dark border" title="Mesas/Salão">Mesa</span><% } %>
+                            <% if (u.acesso_caixa === 1) { %><span class="badge bg-light text-dark border" title="Caixa">Caixa</span><% } %>
+                            <% if (u.acesso_cozinha === 1) { %><span class="badge bg-light text-dark border" title="Cozinha">Coz</span><% } %>
+                            <% if (u.acesso_estoque === 1) { %><span class="badge bg-light text-dark border" title="Estoque">Est</span><% } %>
+                            <% if (u.acesso_relatorios === 1) { %><span class="badge bg-light text-dark border" title="Relatórios">Rel</span><% } %>
+                            <% if (u.acesso_configuracoes === 1) { %><span class="badge bg-light text-dark border" title="Configurações">Cfg</span><% } %>
+                          </div>
+                        <% } %>
+                      </td>
+
+                      <td class="text-center">
+                        <% if (u.ativo === 1) { %>
+                          <span class="badge bg-success px-2 py-1">Ativo</span>
+                        <% } else { %>
+                          <span class="badge bg-secondary px-2 py-1">Inativo</span>
+                        <% } %>
+                      </td>
+
+                      <td class="text-center">
+                        <div class="d-inline-flex gap-1">
+                          <!-- Editar -->
+                          <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditarUsuario<%= u.id %>" title="Editar">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                          </button>
+
+                          <!-- Resetar Senha -->
+                          <% if (!semAcessoPainel) { %>
+                            <form action="/usuarios/<%= u.id %>/resetar-senha" method="POST" onsubmit="return confirm('Deseja resetar a senha deste usuário para usuario123?');">
+                              <button type="submit" class="btn btn-outline-warning btn-sm" title="Redefinir Senha para usuario123">
+                                <i class="fa-solid fa-key"></i>
+                              </button>
+                            </form>
+                          <% } %>
+
+                          <!-- Soft delete ou Reativar -->
+                          <% if (u.ativo === 1) { %>
+                            <form action="/usuarios/<%= u.id %>/excluir" method="POST" onsubmit="return confirm('Deseja desativar <%= u.nome %> da equipe?');">
+                              <button type="submit" class="btn btn-outline-danger btn-sm" title="Desativar colaborador">
+                                <i class="fa-solid fa-user-xmark"></i>
+                              </button>
+                            </form>
+                          <% } else { %>
+                            <form action="/usuarios/<%= u.id %>/reativar" method="POST">
+                              <button type="submit" class="btn btn-outline-success btn-sm" title="Reativar colaborador">
+                                <i class="fa-solid fa-user-check"></i>
+                              </button>
+                            </form>
+                          <% } %>
+                        </div>
+                      </td>
+                    </tr>
+
+                    <!-- Modal Editar Colaborador -->
+                    <div class="modal fade" id="modalEditarUsuario<%= u.id %>" tabindex="-1">
+                      <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content border-0 shadow">
+                          <form action="/usuarios/<%= u.id %>/editar" method="POST">
+                            <div class="modal-header bg-primary text-white">
+                              <h5 class="modal-title fw-bold">
+                                <i class="fa-solid fa-user-pen me-2"></i>Editar Colaborador: <%= u.nome %>
+                              </h5>
+                              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                              <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                  <label class="form-label fw-bold">Nome Completo:</label>
+                                  <input type="text" name="nome" class="form-control" value="<%= u.nome %>" required>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                  <label class="form-label fw-bold">Login / Email:</label>
+                                  <input type="text" name="email" class="form-control" value="<%= u.email %>" required>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                  <label class="form-label fw-bold">Cargo / Perfil:</label>
+                                  <select name="perfil_id" class="form-select select-perfil" required>
+                                    <% perfis.forEach(perf => { %>
+                                      <% 
+                                        const pNome = perf.nome.toLowerCase();
+                                        const ehAdminPerfil = pNome.includes('administrador') || pNome.includes('gerente');
+                                        // Bloqueia opção se não for Super Admin
+                                        if (ehAdminPerfil && !ehSuperAdmin && u.perfil_id !== perf.id) { return; }
+                                      %>
+                                      <option value="<%= perf.id %>" <%= u.perfil_id === perf.id ? 'selected' : '' %>>
+                                        <%= perf.nome %>
+                                      </option>
+                                    <% }) %>
+                                  </select>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                  <label class="form-label fw-bold">Nova Senha (Opcional):</label>
+                                  <input type="password" name="nova_senha" class="form-control" placeholder="Deixe em branco para não alterar">
+                                </div>
+
+                                <div class="col-12">
+                                  <label class="form-label fw-bold border-bottom pb-1 d-block text-secondary">
+                                    Permissões de Telas (Ignorado para Entregador e Zelador):
+                                  </label>
+                                  <div class="row g-2 p-2 bg-light rounded border">
+                                    <div class="col-4">
+                                      <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="acesso_salao" id="ed_sal_<%= u.id %>" <%= u.acesso_salao === 1 ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="ed_sal_<%= u.id %>">Mesas & Salão</label>
+                                      </div>
+                                    </div>
+                                    <div class="col-4">
+                                      <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="acesso_caixa" id="ed_cx_<%= u.id %>" <%= u.acesso_caixa === 1 ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="ed_cx_<%= u.id %>">Caixa & Fechamento</label>
+                                      </div>
+                                    </div>
+                                    <div class="col-4">
+                                      <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="acesso_cozinha" id="ed_coz_<%= u.id %>" <%= u.acesso_cozinha === 1 ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="ed_coz_<%= u.id %>">Cozinha / Bar</label>
+                                      </div>
+                                    </div>
+                                    <div class="col-4">
+                                      <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="acesso_estoque" id="ed_est_<%= u.id %>" <%= u.acesso_estoque === 1 ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="ed_est_<%= u.id %>">Estoque</label>
+                                      </div>
+                                    </div>
+                                    <div class="col-4">
+                                      <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="acesso_relatorios" id="ed_rel_<%= u.id %>" <%= u.acesso_relatorios === 1 ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="ed_rel_<%= u.id %>">Relatórios</label>
+                                      </div>
+                                    </div>
+                                    <div class="col-4">
+                                      <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="acesso_configuracoes" id="ed_cfg_<%= u.id %>" <%= u.acesso_configuracoes === 1 ? 'checked' : '' %>>
+                                        <label class="form-check-label" for="ed_cfg_<%= u.id %>">Configurações</label>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div class="col-12 mt-2">
+                                  <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="ativo" id="ativo_<%= u.id %>" <%= u.ativo === 1 ? 'checked' : '' %>>
+                                    <label class="form-check-label fw-bold" for="ativo_<%= u.id %>">
+                                      Colaborador Ativo na Equipe
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal-footer bg-light">
+                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                              <button type="submit" class="btn btn-primary fw-bold px-4">Salvar Alterações</button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  <% }) %>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Cadastrar Novo Colaborador -->
+  <div class="modal fade" id="modalNovoUsuario" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow">
+        <form action="/usuarios/novo" method="POST">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-user-plus me-2"></i>Cadastrar Novo Colaborador
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Nome Completo:</label>
+                <input type="text" name="nome" class="form-control" placeholder="Ex: Lucas Silva, Maria Oliveira..." required autofocus>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Login de Acesso / Usuário:</label>
+                <input type="text" name="email" class="form-control" placeholder="Ex: lucas, maria, garcom1..." required>
+                <small class="text-muted">Login único para autenticação.</small>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Cargo / Perfil:</label>
+                <select name="perfil_id" id="novoPerfilSelect" class="form-select" required>
+                  <option value="">Selecione o cargo...</option>
+                  <% perfis.forEach(perf => { %>
+                    <% 
+                      const pNome = perf.nome.toLowerCase();
+                      const ehAdminPerfil = pNome.includes('administrador') || pNome.includes('gerente');
+                      if (ehAdminPerfil && !ehSuperAdmin) { return; }
+                    %>
+                    <option value="<%= perf.id %>" data-nome="<%= pNome %>">
+                      <%= perf.nome %>
+                    </option>
+                  <% }) %>
+                </select>
+                <% if (!ehSuperAdmin) { %>
+                  <small class="text-muted">Gerentes só podem ser cadastrados pelo Super Admin (.env).</small>
+                <% } %>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-bold">Senha Inicial Padrão:</label>
+                <input type="text" class="form-control bg-light fw-bold text-danger" value="usuario123" readonly>
+                <small class="text-muted">Troca obrigatória no primeiro acesso.</small>
+              </div>
+
+              <!-- Permissões de Telas -->
+              <div class="col-12" id="blocoPermissoes">
+                <label class="form-label fw-bold border-bottom pb-1 d-block text-secondary">
+                  Acessos & Permissões às Telas:
+                </label>
+                <div class="row g-2 p-2 bg-light rounded border">
+                  <div class="col-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="acesso_salao" id="nv_sal" checked>
+                      <label class="form-check-label" for="nv_sal">Mesas & Salão</label>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="acesso_caixa" id="nv_cx">
+                      <label class="form-check-label" for="nv_cx">Caixa & Fechamento</label>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="acesso_cozinha" id="nv_coz">
+                      <label class="form-check-label" for="nv_coz">Cozinha / Bar</label>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="acesso_estoque" id="nv_est">
+                      <label class="form-check-label" for="nv_est">Estoque</label>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="acesso_relatorios" id="nv_rel">
+                      <label class="form-check-label" for="nv_rel">Relatórios</label>
+                    </div>
+                  </div>
+                  <div class="col-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="acesso_configuracoes" id="nv_cfg">
+                      <label class="form-check-label" for="nv_cfg">Configurações</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger fw-bold px-4">Salvar Colaborador</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Se o cargo escolhido for Entregador ou Zelador, esconde as opções de tela
+    const perfilSelect = document.getElementById('novoPerfilSelect');
+    const blocoPermissoes = document.getElementById('blocoPermissoes');
+
+    if (perfilSelect && blocoPermissoes) {
+      perfilSelect.addEventListener('change', function () {
+        const option = this.options[this.selectedIndex];
+        const nomeCargo = option ? (option.getAttribute('data-nome') || '') : '';
+        if (nomeCargo.includes('entregador') || nomeCargo.includes('zelador')) {
+          blocoPermissoes.style.display = 'none';
+        } else {
+          blocoPermissoes.style.display = 'block';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

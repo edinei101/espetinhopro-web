@@ -1,0 +1,77 @@
+<nav class="navbar navbar-dark bg-dark border-bottom border-secondary px-3 py-2 sticky-top">
+  <div class="d-flex align-items-center gap-3">
+    <!-- Botão de alternar Sidebar -->
+    <button class="btn btn-outline-secondary text-white btn-sm border-0" id="btnToggleSidebar" type="button" title="Recolher / Expandir menu">
+      <i class="fa-solid fa-bars fa-lg"></i>
+    </button>
+    
+    <a class="navbar-brand fw-bold mb-0 text-warning d-flex align-items-center gap-2" href="/inicio">
+      <i class="fa-solid fa-fire-flame-curved"></i>
+      <span>EspetinhoPro</span>
+    </a>
+  </div>
+
+  <div class="d-flex align-items-center gap-3">
+    <span class="text-secondary small d-none d-md-inline">Sistema de Gestão</span>
+  </div>
+</nav>
+
+<!-- Modal Obrigatório de Troca de Senha no Primeiro Acesso -->
+<% 
+  const exigeTroca = (typeof usuario !== 'undefined' && usuario && Number(usuario.primeiro_acesso) === 1) || 
+                     (typeof primeiro_acesso !== 'undefined' && Number(primeiro_acesso) === 1);
+  const nomeColaborador = (typeof usuario !== 'undefined' && usuario && usuario.nome) || 
+                          (typeof nomeUsuario !== 'undefined' && nomeUsuario) || 
+                          'Colaborador';
+%>
+
+<% if (exigeTroca) { %>
+  <div class="modal fade" id="modalTrocaSenhaObrigatoria" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalLabelTroca" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <form action="/usuarios/primeiro-acesso/trocar-senha" method="POST">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title fw-bold" id="modalLabelTroca">
+              <i class="fa-solid fa-key me-2"></i>Primeiro Acesso - Troca de Senha
+            </h5>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-warning py-2 small mb-3">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i>
+              Olá, <strong><%= nomeColaborador %></strong>! Por questões de segurança, você deve substituir a senha inicial padrão (<code>usuario123</code>) para começar a utilizar o sistema.
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nova Senha Pessoal:</label>
+              <input type="password" name="nova_senha" class="form-control" placeholder="Mínimo 4 caracteres" minlength="4" required autofocus>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Confirmar Nova Senha:</label>
+              <input type="password" name="confirmar_senha" class="form-control" placeholder="Digite novamente a nova senha" minlength="4" required>
+            </div>
+          </div>
+          <div class="modal-footer bg-light justify-content-between">
+            <a href="/logout" class="btn btn-outline-secondary btn-sm">
+              <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>Sair
+            </a>
+            <button type="submit" class="btn btn-warning fw-bold px-4">Salvar Nova Senha</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const modalEl = document.getElementById('modalTrocaSenhaObrigatoria');
+      if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalEl, {
+          backdrop: 'static',
+          keyboard: false
+        });
+        modal.show();
+      }
+    });
+  </script>
+<% } %>

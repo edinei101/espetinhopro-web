@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EspetinhoPro - <%= titulo %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .card-kpi { border-radius: 12px; border: none; }
+  </style>
+</head>
+<body>
+  <%- include('../partials/_navbar') %>
+
+  <div class="d-flex">
+    <%- include('../partials/_sidebar') %>
+
+    <main class="flex-grow-1 p-4">
+      <!-- Cabeçalho e Filtro de Datas -->
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+          <h2 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-chart-line text-danger me-2"></i>Relatórios & Vendas
+          </h2>
+          <small class="text-muted">Acompanhe faturamento, formas de pagamento, mais vendidos e repasses</small>
+        </div>
+
+        <form action="/relatorios" method="GET" class="d-flex align-items-center gap-2 bg-white p-2 rounded shadow-sm border">
+          <div>
+            <label class="form-label small text-muted mb-0 d-block">Data Início</label>
+            <input type="date" name="data_inicio" value="<%= dataInicio %>" class="form-control form-control-sm" required>
+          </div>
+          <div>
+            <label class="form-label small text-muted mb-0 d-block">Data Fim</label>
+            <input type="date" name="data_fim" value="<%= dataFim %>" class="form-control form-control-sm" required>
+          </div>
+          <div class="align-self-end">
+            <button type="submit" class="btn btn-danger btn-sm px-3 fw-bold">
+              <i class="fa-solid fa-filter me-1"></i>Filtrar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 4 Indicadores Principais (KPIs) -->
+      <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card card-kpi bg-white shadow-sm p-3 border-start border-4 border-success">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <small class="text-muted fw-bold text-uppercase">Faturamento Bruto</small>
+                <h3 class="fw-bold text-success mb-0">
+                  R$ <%= Number(totais.faturamento_bruto).toFixed(2).replace('.', ',') %>
+                </h3>
+              </div>
+              <div class="fs-1 text-success opacity-50"><i class="fa-solid fa-sack-dollar"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card card-kpi bg-white shadow-sm p-3 border-start border-4 border-primary">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <small class="text-muted fw-bold text-uppercase">Comandas Pagas</small>
+                <h3 class="fw-bold text-primary mb-0"><%= totais.total_comandas %></h3>
+              </div>
+              <div class="fs-1 text-primary opacity-50"><i class="fa-solid fa-receipt"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card card-kpi bg-white shadow-sm p-3 border-start border-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <small class="text-muted fw-bold text-uppercase">Gorjetas / 10%</small>
+                <h3 class="fw-bold text-warning-emphasis mb-0">
+                  R$ <%= Number(totais.total_gorjetas).toFixed(2).replace('.', ',') %>
+                </h3>
+              </div>
+              <div class="fs-1 text-warning opacity-50"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="card card-kpi bg-white shadow-sm p-3 border-start border-4 border-info">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <small class="text-muted fw-bold text-uppercase">Ticket Médio</small>
+                <h3 class="fw-bold text-info-emphasis mb-0">
+                  R$ <%= Number(totais.ticketMedio).toFixed(2).replace('.', ',') %>
+                </h3>
+              </div>
+              <div class="fs-1 text-info opacity-50"><i class="fa-solid fa-scale-balanced"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha 2: Mais Vendidos & Formas de Pagamento -->
+      <div class="row g-4 mb-4">
+        <!-- Top 10 Itens Mais Vendidos -->
+        <div class="col-12 col-lg-7">
+          <div class="card border-0 shadow-sm rounded-3 bg-white h-100">
+            <div class="card-header bg-white py-3 border-bottom">
+              <h5 class="fw-bold mb-0 text-dark">
+                <i class="fa-solid fa-fire text-danger me-2"></i>Top 10 Itens Mais Vendidos
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light small text-uppercase">
+                    <tr>
+                      <th class="ps-3">Item</th>
+                      <th>Categoria</th>
+                      <th class="text-center">Qtd</th>
+                      <th class="text-end pe-3">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if (itensMaisVendidos.length === 0) { %>
+                      <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">
+                          Nenhuma venda registrada no período selecionado.
+                        </td>
+                      </tr>
+                    <% } else { %>
+                      <% itensMaisVendidos.forEach((item, index) => { %>
+                        <tr>
+                          <td class="ps-3">
+                            <span class="badge bg-light text-dark border me-2">#<%= index + 1 %></span>
+                            <strong><%= item.produto_nome %></strong>
+                          </td>
+                          <td>
+                            <span class="badge bg-secondary-subtle text-secondary border">
+                              <%= item.categoria_nome || 'Geral' %>
+                            </span>
+                          </td>
+                          <td class="text-center fw-bold"><%= item.quantidade_vendida %></td>
+                          <td class="text-end pe-3 fw-bold text-success">
+                            R$ <%= Number(item.total_arrecadado).toFixed(2).replace('.', ',') %>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formas de Pagamento -->
+        <div class="col-12 col-lg-5">
+          <div class="card border-0 shadow-sm rounded-3 bg-white h-100">
+            <div class="card-header bg-white py-3 border-bottom">
+              <h5 class="fw-bold mb-0 text-dark">
+                <i class="fa-solid fa-wallet text-success me-2"></i>Meios de Pagamento
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light small text-uppercase">
+                    <tr>
+                      <th class="ps-3">Forma</th>
+                      <th class="text-center">Transações</th>
+                      <th class="text-end pe-3">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if (pagamentosPorForma.length === 0) { %>
+                      <tr>
+                        <td colspan="3" class="text-center py-4 text-muted">Nenhum pagamento registrado no período.</td>
+                      </tr>
+                    <% } else { %>
+                      <% pagamentosPorForma.forEach(fp => { %>
+                        <tr>
+                          <td class="ps-3 fw-bold">
+                            <% if (fp.forma_pagamento === 'DINHEIRO') { %>
+                              <i class="fa-solid fa-money-bill text-success me-2"></i>Dinheiro
+                            <% } else if (fp.forma_pagamento === 'PIX') { %>
+                              <i class="fa-brands fa-pix text-info me-2"></i>PIX
+                            <% } else if (fp.forma_pagamento === 'CARTAO_DEBITO') { %>
+                              <i class="fa-solid fa-credit-card text-primary me-2"></i>Cartão de Débito
+                            <% } else if (fp.forma_pagamento === 'CARTAO_CREDITO') { %>
+                              <i class="fa-regular fa-credit-card text-warning me-2"></i>Cartão de Crédito
+                            <% } else { %>
+                              <i class="fa-solid fa-circle-dot text-secondary me-2"></i><%= fp.forma_pagamento %>
+                            <% } %>
+                          </td>
+                          <td class="text-center"><%= fp.transacoes %></td>
+                          <td class="text-end pe-3 fw-bold text-success">
+                            R$ <%= Number(fp.total).toFixed(2).replace('.', ',') %>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha 3: Desempenho por Garçom & Últimos Repasses de Gorjeta -->
+      <div class="row g-4">
+        <!-- Vendas por Garçom -->
+        <div class="col-12 col-lg-6">
+          <div class="card border-0 shadow-sm rounded-3 bg-white h-100">
+            <div class="card-header bg-white py-3 border-bottom">
+              <h5 class="fw-bold mb-0 text-dark">
+                <i class="fa-solid fa-user-tie text-primary me-2"></i>Vendas por Garçom
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light small text-uppercase">
+                    <tr>
+                      <th class="ps-3">Atendente</th>
+                      <th class="text-center">Comandas</th>
+                      <th class="text-end">Gorjeta 10%</th>
+                      <th class="text-end pe-3">Vendas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if (desempenhoGarcom.length === 0) { %>
+                      <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">Sem registros de atendimento.</td>
+                      </tr>
+                    <% } else { %>
+                      <% desempenhoGarcom.forEach(g => { %>
+                        <tr>
+                          <td class="ps-3">
+                            <i class="fa-solid fa-circle-user text-secondary me-1"></i>
+                            <strong><%= g.garcom_nome %></strong>
+                          </td>
+                          <td class="text-center"><%= g.comandas_atendidas %></td>
+                          <td class="text-end text-warning-emphasis fw-bold">
+                            R$ <%= Number(g.gorjeta_gerada).toFixed(2).replace('.', ',') %>
+                          </td>
+                          <td class="text-end pe-3 fw-bold text-success">
+                            R$ <%= Number(g.total_vendido).toFixed(2).replace('.', ',') %>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Histórico de Repasses de Gorjeta -->
+        <div class="col-12 col-lg-6">
+          <div class="card border-0 shadow-sm rounded-3 bg-white h-100">
+            <div class="card-header bg-white py-3 border-bottom">
+              <h5 class="fw-bold mb-0 text-dark">
+                <i class="fa-solid fa-handshake text-warning me-2"></i>Repasses de Gorjeta Registrados
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light small text-uppercase">
+                    <tr>
+                      <th class="ps-3">Colaborador</th>
+                      <th>Modalidade</th>
+                      <th class="text-end pe-3">Valor Repassado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if (repasses.length === 0) { %>
+                      <tr>
+                        <td colspan="3" class="text-center py-4 text-muted">Nenhum repasse no período.</td>
+                      </tr>
+                    <% } else { %>
+                      <% repasses.forEach(r => { %>
+                        <tr>
+                          <td class="ps-3">
+                            <strong><%= r.usuario_nome %></strong>
+                            <small class="d-block text-muted" style="font-size: 0.75rem;"><%= r.observacao || '' %></small>
+                          </td>
+                          <td>
+                            <span class="badge <%= r.modalidade === 'RATEIO_TURNO' ? 'bg-info-subtle text-info-emphasis' : 'bg-primary-subtle text-primary' %> border">
+                              <%= r.modalidade === 'RATEIO_TURNO' ? 'Rateio de Turno' : 'Individual' %>
+                            </span>
+                          </td>
+                          <td class="text-end pe-3 fw-bold text-success">
+                            R$ <%= Number(r.valor_recebido).toFixed(2).replace('.', ',') %>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EspetinhoPro - <%= titulo %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .card-painel { border-radius: 12px; }
+    .badge-status-cozinha { font-size: 0.75rem; }
+    .btn-filtro-cat {
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/_navbar') %>
+
+  <div class="d-flex">
+    <%- include('../partials/_sidebar') %>
+
+    <main class="flex-grow-1 p-4">
+      <!-- Topo: Informações da Mesa e Encerramento -->
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+          <a href="/mesas" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="fa-solid fa-arrow-left me-1"></i> Voltar ao Salão
+          </a>
+          <h2 class="fw-bold mb-0 text-dark">
+            Mesa <%= comanda.mesa_numero %> - <span class="text-danger"><%= comanda.nome_cliente || 'Cliente' %></span>
+          </h2>
+          <small class="text-muted">
+            <i class="fa-regular fa-clock me-1"></i> Aberta em: <%= new Date(comanda.data_abertura).toLocaleString('pt-BR') %> 
+            <% if (comanda.garcom_nome) { %> | Atendente: <strong><%= comanda.garcom_nome %></strong><% } %>
+            | Status: <span class="badge <%= comanda.status === 'AGUARDANDO_PAGAMENTO' ? 'bg-danger' : 'bg-warning text-dark' %>"><%= comanda.status %></span>
+          </small>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+          <div class="text-end">
+            <small class="text-muted d-block text-uppercase fw-bold">Conta Atual</small>
+            <h2 class="fw-bold text-success mb-0">
+              R\$ <%= Number(comanda.valor_total).toFixed(2).replace('.', ',') %>
+            </h2>
+          </div>
+
+          <!-- Botão Cancelar Comanda -->
+          <% if (!jaEnviadoParaProducao && comanda.status === 'ABERTA') { %>
+            <form action="/mesas/comanda/<%= comanda.id %>/cancelar" method="POST" onsubmit="return confirm('Confirmar cancelamento da mesa?');">
+              <button type="submit" class="btn btn-outline-danger btn-lg fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2">
+                <i class="fa-solid fa-ban fa-lg"></i>
+                <span>Cancelar Mesa</span>
+              </button>
+            </form>
+          <% } %>
+
+          <!-- Botão Encerrar Atendimento -->
+          <% if (comanda.status === 'AGUARDANDO_PAGAMENTO') { %>
+            <span class="badge bg-danger fs-6 p-2 px-3">
+              <i class="fa-solid fa-bell me-1"></i> Aguardando Pagamento no Caixa
+            </span>
+          <% } else if (podeFecharConta) { %>
+            <form action="/mesas/comanda/<%= comanda.id %>/fechar-conta" method="POST" onsubmit="return confirm('Confirmar encerramento e enviar para o Caixa?');">
+              <button type="submit" class="btn btn-success btn-lg fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2">
+                <i class="fa-solid fa-check-to-slot fa-lg"></i>
+                <span>Encerrar Atendimento</span>
+              </button>
+            </form>
+          <% } else if (itens.length > 0) { %>
+            <div class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="<%= temItensEmRascunho ? 'Envie os itens para preparo antes de encerrar' : 'Aguarde Cozinha e Bar marcarem os itens como PRONTO' %>">
+              <button type="button" class="btn btn-secondary btn-lg fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2 disabled" style="pointer-events: none;">
+                <i class="fa-solid fa-clock-rotate-left fa-lg"></i>
+                <span><%= temItensEmRascunho ? 'Envie os Pedidos' : 'Aguardando Preparo' %></span>
+              </button>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Coluna Esquerda: Lançador com Filtro Rápido de Categorias -->
+        <div class="col-12 col-lg-5">
+          <div class="card card-painel shadow-sm border-0">
+            <div class="card-header bg-danger text-white py-3 fw-bold">
+              <i class="fa-solid fa-plus-circle me-2"></i>Lançar Produto na Mesa
+            </div>
+            <div class="card-body p-4">
+              <% if (comanda.status === 'AGUARDANDO_PAGAMENTO') { %>
+                <div class="alert alert-warning mb-0 text-center">
+                  <i class="fa-solid fa-lock me-1"></i> <strong>Mesa em Fechamento</strong><br>
+                  A conta já foi enviada para o Caixa.
+                </div>
+              <% } else { %>
+
+                <!-- BOTÕES DE ESCOLHA POR CATEGORIA -->
+                <label class="form-label fw-bold mb-2 text-secondary text-uppercase small">1. Escolha a Categoria:</label>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <button type="button" class="btn btn-danger btn-sm btn-filtro-cat active" onclick="filtrarCategoria(1, this)">
+                    🔥 Espetinhos
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm btn-filtro-cat" onclick="filtrarCategoria(2, this)">
+                    🍲 Acomp.
+                  </button>
+                  <button type="button" class="btn btn-outline-primary btn-sm btn-filtro-cat" onclick="filtrarCategoria(3, this)">
+                    🍺 Bebidas
+                  </button>
+                  <button type="button" class="btn btn-outline-warning text-dark btn-sm btn-filtro-cat" onclick="filtrarCategoria(4, this)">
+                    🍬 Caixa / Doces
+                  </button>
+                  <button type="button" class="btn btn-outline-dark btn-sm btn-filtro-cat" onclick="filtrarCategoria('TODOS', this)">
+                    📋 Todos
+                  </button>
+                </div>
+
+                <div id="alertaCheckout" class="alert alert-warning py-2 px-3 small d-none mb-3">
+                  <i class="fa-solid fa-store me-1"></i> <strong>Item de Caixa:</strong> Entregue direto ao cliente. Não vai para grelha nem bar.
+                </div>
+
+                <form action="/mesas/comanda/<%= comanda.id %>/adicionar" method="POST">
+                  <!-- SELETOR DE PRODUTOS -->
+                  <div class="mb-3">
+                    <label for="produto_id" class="form-label fw-bold">2. Selecione o Produto:</label>
+                    <select name="produto_id" id="produto_id" class="form-select form-select-lg" required onchange="aoMudarProduto()">
+                      <option value="" disabled selected>Escolha um produto...</option>
+                      <% produtos.forEach(p => { %>
+                        <option value="<%= p.id %>" data-categoria="<%= p.categoria_id %>">
+                          <%= p.nome %> — R\$ <%= Number(p.preco).toFixed(2).replace('.', ',') %>
+                        </option>
+                      <% }) %>
+                    </select>
+                  </div>
+
+                  <div class="row g-2 mb-3">
+                    <div class="col-5">
+                      <label for="quantidade" class="form-label fw-bold">Quantidade:</label>
+                      <input type="number" class="form-control form-control-lg text-center fw-bold" id="quantidade" name="quantidade" value="1" min="1" required>
+                    </div>
+                    <div class="col-7" id="boxPontoCarne">
+                      <label for="ponto_carne" class="form-label fw-bold">Ponto da Carne:</label>
+                      <select name="ponto_carne" id="ponto_carne" class="form-select form-select-lg">
+                        <option value="">Não se aplica</option>
+                        <option value="Mal Passado">Mal Passado</option>
+                        <option value="Ao Ponto" selected>Ao Ponto</option>
+                        <option value="Bem Passado">Bem Passado</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="observacao" class="form-label fw-bold">Observação:</label>
+                    <input type="text" class="form-control" id="observacao" name="observacao" placeholder="Ex: sem cebola, copo com gelo...">
+                  </div>
+
+                  <button type="submit" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm">
+                    <i class="fa-solid fa-plus me-1"></i> Incluir na Mesa
+                  </button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna Direita: Itens Já Lançados -->
+        <div class="col-12 col-lg-7">
+          <div class="card card-painel shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+              <h5 class="fw-bold mb-0 text-dark">
+                <i class="fa-solid fa-receipt text-secondary me-2"></i>Consumo da Mesa (<%= itens.length %>)
+              </h5>
+
+              <% const temItemPendenteEnvio = itens.some(i => i.status_preparo === 'RASCUNHO'); %>
+              <% if (temItemPendenteEnvio && comanda.status === 'ABERTA') { %>
+                <form action="/mesas/comanda/<%= comanda.id %>/enviar-producao" method="POST">
+                  <button type="submit" class="btn btn-warning text-dark btn-sm fw-bold shadow-sm">
+                    <i class="fa-solid fa-bell me-1"></i> Enviar para Cozinha / Bar
+                  </button>
+                </form>
+              <% } else if (itens.length > 0) { %>
+                <span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1">
+                  <i class="fa-solid fa-check-double me-1"></i> Produção em Dia
+                </span>
+              <% } %>
+            </div>
+
+            <div class="card-body p-0">
+              <% if (itens.length === 0) { %>
+                <div class="text-center py-5 text-muted">
+                  <i class="fa-solid fa-utensils fa-3x mb-2 text-secondary"></i>
+                  <p class="mb-0">Nenhum item consumido ainda.</p>
+                  <small>Escolha uma categoria ao lado para lançar os primeiros pedidos.</small>
+                </div>
+              <% } else { %>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                      <tr>
+                        <th>Item</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Qtd</th>
+                        <th class="text-end">Unit.</th>
+                        <th class="text-end">Subtotal</th>
+                        <th class="text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% itens.forEach(item => { %>
+                        <tr>
+                          <td>
+                            <strong><%= item.produto_nome %></strong>
+                            <% if (item.categoria_id === 4) { %>
+                              <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">Caixa/Doce</span>
+                            <% } %>
+                            <% if (item.ponto_carne) { %>
+                              <span class="badge bg-light text-dark border ms-1"><%= item.ponto_carne %></span>
+                            <% } %>
+                            <% if (item.observacao) { %>
+                              <small class="text-muted d-block"><i class="fa-regular fa-comment-dots me-1"></i><%= item.observacao %></small>
+                            <% } %>
+                          </td>
+                          <td class="text-center">
+                            <% if (item.categoria_id === 4) { %>
+                              <span class="badge bg-success-subtle text-success border border-success badge-status-cozinha"><i class="fa-solid fa-store me-1"></i>Entregue</span>
+                            <% } else if (item.status_preparo === 'PRONTO') { %>
+                              <span class="badge bg-success badge-status-cozinha"><i class="fa-solid fa-check me-1"></i>Pronto</span>
+                            <% } else if (item.status_preparo === 'EM_PREPARO') { %>
+                              <span class="badge bg-warning text-dark badge-status-cozinha"><i class="fa-solid fa-fire me-1"></i>Em Preparo</span>
+                            <% } else if (item.status_preparo === 'PENDENTE') { %>
+                              <span class="badge bg-info text-dark badge-status-cozinha"><i class="fa-solid fa-hourglass-half me-1"></i>Na Fila</span>
+                            <% } else { %>
+                              <span class="badge bg-secondary badge-status-cozinha">Rascunho</span>
+                            <% } %>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge bg-secondary fs-6"><%= item.quantidade %></span>
+                          </td>
+                          <td class="text-end text-muted">
+                            R\$ <%= Number(item.preco_unitario).toFixed(2).replace('.', ',') %>
+                          </td>
+                          <td class="text-end fw-bold text-dark">
+                            R\$ <%= Number(item.valor_total).toFixed(2).replace('.', ',') %>
+                          </td>
+                          <td class="text-center">
+                            <% if ((item.status_preparo === 'RASCUNHO' || item.categoria_id === 4) && comanda.status === 'ABERTA') { %>
+                              <form action="/mesas/comanda/<%= comanda.id %>/remover/<%= item.id %>" method="POST" onsubmit="return confirm('Remover este item?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm border-0" title="Remover item">
+                                  <i class="fa-solid fa-trash"></i>
+                                </button>
+                              </form>
+                            <% } else { %>
+                              <span class="text-muted small" title="Item em preparo não pode ser excluído"><i class="fa-solid fa-lock text-secondary"></i></span>
+                            <% } %>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Rodapé do Card -->
+            <% if (itens.length > 0) { %>
+              <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center">
+                <% if (comanda.status === 'AGUARDANDO_PAGAMENTO') { %>
+                  <span class="text-muted small"><i class="fa-solid fa-clock me-1"></i>Encerrada pelo atendente. Pagamento pendente no Caixa.</span>
+                  <a href="/mesas" class="btn btn-outline-secondary fw-bold px-4">Voltar ao Salão</a>
+                <% } else if (podeFecharConta) { %>
+                  <span class="text-success small fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Todos os pedidos prontos/entregues!</span>
+                  <form action="/mesas/comanda/<%= comanda.id %>/fechar-conta" method="POST" onsubmit="return confirm('Confirmar encerramento e enviar para o Caixa?');">
+                    <button type="submit" class="btn btn-success fw-bold px-4">
+                      <i class="fa-solid fa-check-to-slot me-1"></i> Encerrar Atendimento
+                    </button>
+                  </form>
+                <% } else { %>
+                  <span class="text-danger small fw-bold">
+                    <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                    <%= temItensEmRascunho ? 'Existem itens em rascunho: envie para produção antes de encerrar.' : 'Aguardando Cozinha e Bar marcarem os pedidos como PRONTO para poder encerrar.' %>
+                  </span>
+                  <button type="button" class="btn btn-secondary fw-bold px-4 disabled" style="pointer-events: none;">
+                    Conta Bloqueada
+                  </button>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Filtro instantâneo por categoria
+    function filtrarCategoria(catId, btnEl) {
+      document.querySelectorAll('.btn-filtro-cat').forEach(b => {
+        b.classList.remove('active', 'btn-danger');
+        if (!b.classList.contains('btn-outline-secondary') && !b.classList.contains('btn-outline-primary') && !b.classList.contains('btn-outline-warning') && !b.classList.contains('btn-outline-dark')) {
+          b.classList.add('btn-outline-secondary');
+        }
+      });
+      btnEl.classList.add('active', 'btn-danger');
+
+      const select = document.getElementById('produto_id');
+      const options = select.querySelectorAll('option');
+      let primeiroValido = null;
+
+      options.forEach(opt => {
+        if (!opt.value) return; // opção default
+        const optCat = opt.getAttribute('data-categoria');
+        if (catId === 'TODOS' || optCat == catId) {
+          opt.style.display = 'block';
+          if (!primeiroValido) primeiroValido = opt;
+        } else {
+          opt.style.display = 'none';
+        }
+      });
+
+      if (primeiroValido) {
+        select.value = primeiroValido.value;
+      } else {
+        select.value = '';
+      }
+      aoMudarProduto();
+    }
+
+    function aoMudarProduto() {
+      const select = document.getElementById('produto_id');
+      const opt = select.options[select.selectedIndex];
+      const cat = opt ? opt.getAttribute('data-categoria') : null;
+      const boxCarne = document.getElementById('boxPontoCarne');
+      const alerta = document.getElementById('alertaCheckout');
+
+      if (cat === '4') {
+        alerta.classList.remove('d-none');
+        boxCarne.style.display = 'none';
+        document.getElementById('ponto_carne').value = '';
+      } else if (cat === '3') {
+        alerta.classList.add('d-none');
+        boxCarne.style.display = 'none';
+        document.getElementById('ponto_carne').value = '';
+      } else {
+        alerta.classList.add('d-none');
+        boxCarne.style.display = 'block';
+      }
+    }
+
+    // Inicializa filtrando Espetinhos por padrão
+    window.addEventListener('DOMContentLoaded', () => {
+      filtrarCategoria(1, document.querySelector('.btn-filtro-cat'));
+    });
+  </script>
+</body>
+</html>

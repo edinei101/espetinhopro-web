@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EspetinhoPro - <%= titulo %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .card-comanda {
+      border-radius: 12px;
+      transition: all 0.2s ease-in-out;
+      border: 1px solid #e9ecef;
+    }
+    .card-comanda:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08) !important;
+    }
+    .btn-abrir-nova {
+      padding: 0.75rem 1.25rem;
+      font-size: 1.05rem;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/_navbar') %>
+
+  <div class="d-flex">
+    <%- include('../partials/_sidebar') %>
+
+    <main class="flex-grow-1 p-4">
+      <!-- Topo: Título e Botão de Ação -->
+      <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+          <h2 class="fw-bold mb-1 text-dark">
+            <i class="fa-solid fa-cash-register text-primary me-2"></i>Balcão / Rápido
+          </h2>
+          <p class="text-muted small mb-0">Comandas em aberto e atendimento avulso</p>
+        </div>
+
+        <!-- Botão + para abrir mais uma comanda -->
+        <button type="button" class="btn btn-primary fw-bold shadow-sm btn-abrir-nova" data-bs-toggle="modal" data-bs-target="#modalAbrirComanda">
+          <i class="fa-solid fa-plus me-1"></i> Abrir Mais uma Comanda
+        </button>
+      </div>
+
+      <!-- Resumo em Formato de Cards -->
+      <div class="row g-4">
+        <% if (comandas.length === 0) { %>
+          <div class="col-12 text-center py-5">
+            <div class="bg-white rounded-4 p-5 shadow-sm border">
+              <i class="fa-solid fa-basket-shopping text-muted fa-4x mb-3"></i>
+              <h4 class="text-secondary fw-bold">Nenhuma comanda aberta no balcão</h4>
+              <p class="text-muted mb-4">Clique no botão acima para iniciar um novo atendimento.</p>
+              <button class="btn btn-primary fw-bold px-4 py-2" data-bs-toggle="modal" data-bs-target="#modalAbrirComanda">
+                <i class="fa-solid fa-plus me-1"></i> Abrir Comanda Agora
+              </button>
+            </div>
+          </div>
+        <% } %>
+
+        <% comandas.forEach(c => { %>
+          <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="card card-comanda shadow-sm bg-white h-100 border-top border-primary border-4">
+              <div class="card-body p-4 d-flex flex-column justify-content-between">
+                <div>
+                  <!-- Cabeçalho do Card -->
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-primary fs-6 px-2 py-1">#<%= c.id %></span>
+                    <span class="badge bg-warning text-dark fw-bold"><%= c.status %></span>
+                  </div>
+
+                  <!-- Nome do Cliente -->
+                  <h4 class="fw-bold text-dark mb-1">
+                    <i class="fa-solid fa-user text-secondary me-2 fs-5"></i><%= c.nome_cliente || 'Cliente Balcão' %>
+                  </h4>
+
+                  <small class="text-muted d-block mt-1">
+                    <i class="fa-regular fa-clock me-1"></i> Aberta às <%= new Date(c.data_abertura).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) %>
+                  </small>
+                </div>
+
+                <!-- Total e Ação -->
+                <div class="mt-4 pt-3 border-top">
+                  <div class="d-flex justify-content-between align-items-baseline mb-3">
+                    <span class="text-muted small text-uppercase fw-bold">Valor Atual:</span>
+                    <h3 class="fw-bold text-success mb-0">
+                      R$ <%= Number(c.valor_total).toFixed(2).replace('.', ',') %>
+                    </h3>
+                  </div>
+
+                  <a href="/balcao/comanda/<%= c.id %>" class="btn btn-outline-primary fw-bold w-100 py-2">
+                    <i class="fa-solid fa-eye me-1"></i> Ver Pedidos
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Abrir Nova Comanda com Nome do Cliente -->
+  <div class="modal fade" id="modalAbrirComanda" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <form action="/balcao/nova" method="POST">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title fw-bold" id="modalLabel">
+              <i class="fa-solid fa-plus-circle me-2"></i>Nova Comanda de Balcão
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <label for="nome_cliente" class="form-label fw-bold text-dark">
+              Nome do Cliente:
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light"><i class="fa-solid fa-user"></i></span>
+              <input 
+                type="text" 
+                class="form-control form-control-lg" 
+                id="nome_cliente" 
+                name="nome_cliente" 
+                placeholder="Ex: Carlos, Ana, Retirada 05..." 
+                autofocus
+              >
+            </div>
+            <small class="text-muted mt-2 d-block">
+              Se deixar em branco, o sistema usará "Cliente Balcão".
+            </small>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold px-4">
+              <i class="fa-solid fa-check me-1"></i> Abrir Comanda
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

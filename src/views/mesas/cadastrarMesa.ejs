@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EspetinhoPro - <%= titulo %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .card-mesa-config { border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <%- include('../partials/_navbar') %>
+
+  <div class="d-flex">
+    <%- include('../partials/_sidebar') %>
+
+    <main class="flex-grow-1 p-4">
+      <% if (typeof msg !== 'undefined' && msg) { %>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+          <i class="fa-solid fa-circle-check me-2"></i><%= msg %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <% if (typeof erro !== 'undefined' && erro) { %>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i><%= erro %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+          <h2 class="fw-bold mb-0 text-dark">
+            <i class="fa-solid fa-chair text-danger me-2"></i>Cadastro & Gestão de Mesas
+          </h2>
+          <small class="text-muted">Cadastre novas mesas para o salão e desative mesas que não estão em uso</small>
+        </div>
+        <button class="btn btn-danger fw-bold px-4 py-2 shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalNovaMesa">
+          <i class="fa-solid fa-plus-circle fa-lg"></i>
+          <span>Cadastrar Nova Mesa</span>
+        </button>
+      </div>
+
+      <div class="row g-3">
+        <% if (mesas.length === 0) { %>
+          <div class="col-12 text-center py-5 text-muted">
+            <i class="fa-solid fa-chair fa-3x mb-2 text-secondary"></i>
+            <p class="mb-0">Nenhuma mesa ativa cadastrada no momento.</p>
+          </div>
+        <% } else { %>
+          <% mesas.forEach(m => { %>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+              <div class="card card-mesa-config shadow-sm border-0 bg-white p-3 h-100 d-flex flex-column justify-content-between">
+                <div>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fs-4 fw-bold text-dark">
+                      <i class="fa-solid fa-chair text-danger me-1"></i>Mesa <%= m.numero %>
+                    </span>
+                    <% if (m.status === 'LIVRE') { %>
+                      <span class="badge bg-success-subtle text-success border border-success">Livre</span>
+                    <% } else if (m.status === 'OCUPADA') { %>
+                      <span class="badge bg-danger">Ocupada</span>
+                    <% } else { %>
+                      <span class="badge bg-warning text-dark"><%= m.status %></span>
+                    <% } %>
+                  </div>
+                  <% if (m.nome_identificador) { %>
+                    <p class="text-muted small mb-3">
+                      <i class="fa-solid fa-location-dot me-1"></i><%= m.nome_identificador %>
+                    </p>
+                  <% } else { %>
+                    <p class="text-muted small mb-3">
+                      <i class="fa-solid fa-location-dot me-1"></i>Salão Principal
+                    </p>
+                  <% } %>
+                </div>
+
+                <div class="pt-3 border-top d-flex justify-content-between align-items-center">
+                  <small class="text-muted">Ação:</small>
+                  <% if (m.status === 'LIVRE') { %>
+                    <form action="/cadastrar-mesas/<%= m.id %>/excluir" method="POST" onsubmit="return confirm('Deseja realmente excluir a Mesa <%= m.numero %>?');">
+                      <button type="submit" class="btn btn-outline-danger btn-sm fw-bold">
+                        <i class="fa-solid fa-trash me-1"></i>Excluir
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <span class="badge bg-light text-muted border py-2 px-3">
+                      <i class="fa-solid fa-lock me-1"></i>Em Atendimento
+                    </span>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal de Cadastro -->
+  <div class="modal fade" id="modalNovaMesa" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <form action="/cadastrar-mesas/nova" method="POST">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="fa-solid fa-chair me-2"></i>Nova Mesa
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="mb-3">
+              <label for="numero" class="form-label fw-bold">Número da Mesa:</label>
+              <input type="number" class="form-control form-control-lg text-center fw-bold text-danger fs-3" id="numero" name="numero" placeholder="Ex: 5, 6, 7..." min="1" required autofocus>
+            </div>
+            <div class="mb-3">
+              <label for="nome_identificador" class="form-label fw-bold">Identificador / Local (Opcional):</label>
+              <input type="text" class="form-control" id="nome_identificador" name="nome_identificador" placeholder="Ex: Varanda, Área Externa, Frente...">
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-danger fw-bold px-4">Salvar Mesa</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

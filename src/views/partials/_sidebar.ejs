@@ -1,0 +1,177 @@
+<aside id="sidebarMenu" class="bg-dark text-white border-end border-secondary d-flex flex-column" style="min-height: calc(100vh - 56px); width: 250px; transition: width 0.25s ease, min-width 0.25s ease; flex-shrink: 0;">
+  <div class="p-3 flex-grow-1 overflow-y-auto">
+    <div class="text-secondary small fw-bold text-uppercase mb-3 px-2 sidebar-label">
+      Menu Principal
+    </div>
+
+    <ul class="nav nav-pills flex-column gap-1">
+      <!-- Início (Disponível para qualquer usuário logado) -->
+      <li class="nav-item">
+        <a href="/inicio" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'inicio') ? 'active bg-danger' : '' %>" title="Início">
+          <i class="fa-solid fa-house me-2" style="width: 22px; text-align: center;"></i>
+          <span class="sidebar-text">Início</span>
+        </a>
+      </li>
+
+      <!-- Mesas (Requer acesso_salao ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_salao)) { %>
+        <li class="nav-item">
+          <a href="/mesas" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'mesas') ? 'active bg-danger' : '' %>" title="Mesas">
+            <i class="fa-solid fa-table-cells me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Mesas</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Balcão (Requer acesso_salao ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_salao)) { %>
+        <li class="nav-item">
+          <a href="/balcao" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'balcao') ? 'active bg-danger' : '' %>" title="Balcão">
+            <i class="fa-solid fa-bell-concierge me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Balcão</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Cozinha (Requer acesso_cozinha ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_cozinha)) { %>
+        <li class="nav-item">
+          <a href="/cozinha" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'cozinha') ? 'active bg-danger' : '' %>" title="Cozinha">
+            <i class="fa-solid fa-fire-burner me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Cozinha</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Bar (Requer acesso_cozinha ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_cozinha)) { %>
+        <li class="nav-item">
+          <a href="/bar" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'bar') ? 'active bg-danger' : '' %>" title="Bar">
+            <i class="fa-solid fa-wine-glass me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Bar</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Caixa (Requer acesso_caixa ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_caixa)) { %>
+        <li class="nav-item">
+          <a href="/caixa" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'caixa') ? 'active bg-danger' : '' %>" title="Caixa">
+            <i class="fa-solid fa-cash-register me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Caixa</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Estoque (Requer acesso_estoque ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_estoque)) { %>
+        <li class="nav-item">
+          <a href="/estoque" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'estoque') ? 'active bg-danger' : '' %>" title="Estoque">
+            <i class="fa-solid fa-boxes-stacked me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Estoque</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Relatórios (Requer acesso_relatorios ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_relatorios)) { %>
+        <li class="nav-item">
+          <a href="/relatorios" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'relatorios') ? 'active bg-danger' : '' %>" title="Relatórios">
+            <i class="fa-solid fa-chart-line me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Relatórios</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Cardápio (Requer acesso_configuracoes ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_configuracoes)) { %>
+        <li class="nav-item">
+          <a href="/cardapio" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'cardapio') ? 'active bg-danger' : '' %>" title="Cardápio">
+            <i class="fa-solid fa-book-open me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Cardápio</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Cadastro de Mesas (Requer acesso_configuracoes ou isAdmin) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_configuracoes)) { %>
+        <li class="nav-item">
+          <a href="/cadastrar-mesas" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && (moduloAtual === 'cadastrar-mesas' || moduloAtual === 'configuracoes')) ? 'active bg-danger' : '' %>" title="Cadastro de Mesas">
+            <i class="fa-solid fa-chair me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Cadastrar Mesas</span>
+          </a>
+        </li>
+      <% } %>
+
+      <!-- Equipe & Acessos (Apenas Administrador ou quem possui acesso_configuracoes) -->
+      <% if (typeof usuario !== 'undefined' && usuario && (usuario.isAdmin || usuario.acesso_configuracoes)) { %>
+        <li class="nav-item">
+          <a href="/usuarios" class="nav-link text-white d-flex align-items-center <%= (typeof moduloAtual !== 'undefined' && moduloAtual === 'equipe') ? 'active bg-danger' : '' %>" title="Equipe & Acessos">
+            <i class="fa-solid fa-users-gear me-2" style="width: 22px; text-align: center;"></i>
+            <span class="sidebar-text">Equipe & Acessos</span>
+          </a>
+        </li>
+      <% } %>
+    </ul>
+  </div>
+
+  <!-- Rodapé do Usuário Logado -->
+  <div class="p-3 border-top border-secondary bg-dark">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="text-truncate me-2 sidebar-text">
+        <small class="d-block text-white fw-bold text-truncate">
+          <%= (typeof usuario !== 'undefined' && usuario && usuario.nome) ? usuario.nome : 'Colaborador' %>
+        </small>
+        <small class="text-secondary" style="font-size: 0.75rem;">
+          <%= (typeof usuario !== 'undefined' && usuario && usuario.isAdmin) ? 'Administrador' : 'Colaborador' %>
+        </small>
+      </div>
+      <a href="/logout" class="btn btn-sm btn-outline-danger border-0" title="Sair do sistema">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<style>
+  /* Estilos para recolhimento suave da sidebar */
+  aside#sidebarMenu.sidebar-recolhida {
+    width: 68px !important;
+    min-width: 68px !important;
+  }
+  aside#sidebarMenu.sidebar-recolhida .sidebar-text,
+  aside#sidebarMenu.sidebar-recolhida .sidebar-label {
+    display: none !important;
+  }
+  aside#sidebarMenu.sidebar-recolhida .nav-link {
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  aside#sidebarMenu.sidebar-recolhida .nav-link i {
+    margin-right: 0 !important;
+  }
+</style>
+
+<script>
+  // Persistência do estado retrátil via localStorage
+  document.addEventListener('DOMContentLoaded', function () {
+    const sidebar = document.getElementById('sidebarMenu');
+    const btnToggle = document.getElementById('btnToggleSidebar');
+
+    if (!sidebar) return;
+
+    const estadoSalvo = localStorage.getItem('sidebar_recolhida');
+    if (estadoSalvo === 'true') {
+      sidebar.classList.add('sidebar-recolhida');
+    }
+
+    if (btnToggle) {
+      btnToggle.addEventListener('click', function () {
+        sidebar.classList.toggle('sidebar-recolhida');
+        const estaRecolhida = sidebar.classList.contains('sidebar-recolhida');
+        localStorage.setItem('sidebar_recolhida', estaRecolhida);
+      });
+    }
+  });
+</script>

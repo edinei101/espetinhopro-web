@@ -2,8 +2,7 @@ import { Request, Response } from 'express';
 import { barService } from '../services/barService';
 
 class BarController {
-  // 1. Exibir painel KDS exclusivo do Bar (apenas Bebidas - categoria_id = 3)
-  async exibirPainel(_req: Request, res: Response): Promise<void> {
+    async exibirPainel(_req: Request, res: Response): Promise<void> {
     try {
       const pedidos = await barService.listarFilaBar();
 

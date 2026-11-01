@@ -10,20 +10,21 @@ export interface DashboardDadosDTO {
 export class InicioService {
   async obterIndicadores(): Promise<DashboardDadosDTO> {
     try {
-      // 1. Total de mesas e mesas ocupadas
+      // 1. Totaliza apenas mesas ativas e não excluídas
       const [mesasRows]: any = await db.query(
         `SELECT 
-           COUNT(*) AS total, 
-           COALESCE(SUM(CASE WHEN status = 'OCUPADA' THEN 1 ELSE 0 END), 0) AS ocupadas 
+           COUNT(*) AS total,
+           COALESCE(SUM(CASE WHEN status = 'OCUPADA' THEN 1 ELSE 0 END), 0) AS ocupadas,
+           COALESCE(SUM(CASE WHEN status = 'LIVRE' THEN 1 ELSE 0 END), 0) AS livres
          FROM mesas 
-         WHERE status != 'EXCLUIDA'`
+         WHERE status != 'EXCLUIDA' AND ativo = 1`
       );
 
       const totalMesas = Number(mesasRows[0]?.total || 0);
       const mesasOcupadas = Number(mesasRows[0]?.ocupadas || 0);
-      const mesasLivres = Math.max(0, totalMesas - mesasOcupadas);
+      const mesasLivres = Number(mesasRows[0]?.livres || 0);
 
-      // 2. Clientes / Comandas ativas no Balcão
+      // 2. Comandas ativas no Balcão
       const [balcaoRows]: any = await db.query(
         `SELECT COUNT(*) AS total_balcao 
          FROM comandas 
@@ -40,7 +41,6 @@ export class InicioService {
       };
     } catch (error) {
       console.error('Erro ao buscar indicadores no InicioService:', error);
-      // Fallback seguro caso haja alguma oscilação no banco
       return {
         mesasLivres: 0,
         totalMesas: 0,

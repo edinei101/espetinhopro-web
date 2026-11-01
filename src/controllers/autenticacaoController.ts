@@ -24,14 +24,16 @@ class AutenticacaoController {
 
       const usuarioAutenticado = await autenticacaoService.autenticar(login, senha);
 
-      // Preenchimento de sessão
-      req.session.logado = true;
-      req.session.isAdmin = usuarioAutenticado.isAdmin;
-      req.session.idUsuario = usuarioAutenticado.id;
-      req.session.nomeUsuario = usuarioAutenticado.nome;
-      req.session.primeiro_acesso = usuarioAutenticado.primeiro_acesso;
+      // Preenchimento de sessão (o cast para any silencia os avisos do TypeScript)
+      const session = req.session as any;
 
-      req.session.usuario = {
+      session.logado = true;
+      session.isAdmin = usuarioAutenticado.isAdmin;
+      session.idUsuario = usuarioAutenticado.id;
+      session.nomeUsuario = usuarioAutenticado.nome;
+      session.primeiro_acesso = usuarioAutenticado.primeiro_acesso;
+
+      session.usuario = {
         id: usuarioAutenticado.id,
         nome: usuarioAutenticado.nome,
         email: usuarioAutenticado.email,
@@ -41,12 +43,12 @@ class AutenticacaoController {
         ativo: usuarioAutenticado.ativo
       };
 
-      req.session.acesso_salao = usuarioAutenticado.permissoes.salao;
-      req.session.acesso_caixa = usuarioAutenticado.permissoes.caixa;
-      req.session.acesso_cozinha = usuarioAutenticado.permissoes.cozinha;
-      req.session.acesso_estoque = usuarioAutenticado.permissoes.estoque;
-      req.session.acesso_relatorios = usuarioAutenticado.permissoes.relatorios;
-      req.session.acesso_configuracoes = usuarioAutenticado.permissoes.configuracoes;
+      session.acesso_salao = usuarioAutenticado.permissoes.salao;
+      session.acesso_caixa = usuarioAutenticado.permissoes.caixa;
+      session.acesso_cozinha = usuarioAutenticado.permissoes.cozinha;
+      session.acesso_estoque = usuarioAutenticado.permissoes.estoque;
+      session.acesso_relatorios = usuarioAutenticado.permissoes.relatorios;
+      session.acesso_configuracoes = usuarioAutenticado.permissoes.configuracoes;
 
       res.redirect('/inicio');
     } catch (error: any) {

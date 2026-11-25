@@ -548,47 +548,90 @@
     </div>
   <% } %>
 
-  <!-- MODAL 2: VENDA AVULSA DE BALCÃO (DOCES / BALAS) -->
+ <!-- MODAL 2: VENDA AVULSA DE BALCÃO (CARRINHO MULTI-ITENS) -->
   <% if (caixaAtual && ehDonoDoCaixa) { %>
     <div class="modal fade" id="modalVendaAvulsaBalcao" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow">
-          <form action="/caixa/venda-rapida" method="POST">
+          <form action="/caixa/venda-rapida" method="POST" id="formVendaAvulsaModal">
             <div class="modal-header bg-warning text-dark">
               <h5 class="modal-title fw-bold">
-                <i class="fa-solid fa-candy-cane me-2"></i>Venda Avulsa de Balcão
+                <i class="fa-solid fa-cart-plus me-2"></i>Venda Avulsa de Balcão (Múltiplos Itens)
               </h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-              <div class="mb-3">
-                <label for="produto_modal_vr" class="form-label fw-bold">Selecione o Produto:</label>
-                <select name="produto_id" id="produto_modal_vr" class="form-select form-select-lg" required onchange="calcularVendaAvulsaModal()">
-                  <option value="" disabled selected>Escolha doce, bala, chiclete...</option>
-                  <% produtosCheckout.forEach(p => { %>
-                    <option value="<%= p.id %>" data-preco="<%= p.preco %>">
-                      <%= p.nome %> — R$ <%= Number(p.preco).toFixed(2).replace('.', ',') %>
-                    </option>
-                  <% }) %>
-                </select>
+              <!-- Seleção e Adição de Produto à Lista -->
+              <div class="row g-2 align-items-end mb-3 p-3 bg-light rounded border">
+                <div class="col-md-7">
+                  <label for="produto_modal_vr" class="form-label small fw-bold mb-1">Selecione o Produto:</label>
+                  <select id="produto_modal_vr" class="form-select form-select-lg">
+                    <option value="" disabled selected>Escolha doce, bala, bebida...</option>
+                    <% produtosCheckout.forEach(p => { %>
+                      <option value="<%= p.id %>" data-nome="<%= p.nome %>" data-preco="<%= p.preco %>">
+                        <%= p.nome %> — R$ <%= Number(p.preco).toFixed(2).replace('.', ',') %>
+                      </option>
+                    <% }) %>
+                  </select>
+                </div>
+
+                <div class="col-md-2">
+                  <label for="qtd_modal_vr" class="form-label small fw-bold mb-1">Qtd:</label>
+                  <input type="number" class="form-control form-control-lg text-center fw-bold" id="qtd_modal_vr" value="1" min="1">
+                </div>
+
+                <div class="col-md-3">
+                  <button type="button" class="btn btn-warning btn-lg w-100 fw-bold text-dark shadow-sm" onclick="adicionarProdutoListaVR()">
+                    <i class="fa-solid fa-plus me-1"></i> Incluir
+                  </button>
+                </div>
               </div>
 
-              <div class="row g-2 mb-3">
-                <div class="col-4">
-                  <label for="qtd_modal_vr" class="form-label fw-bold">Qtd:</label>
-                  <input type="number" class="form-control form-control-lg text-center fw-bold" id="qtd_modal_vr" name="quantidade" value="1" min="1" required oninput="calcularVendaAvulsaModal()">
+              <!-- Lista de Itens Adicionados -->
+              <div class="mb-3">
+                <h6 class="fw-bold text-secondary text-uppercase small mb-2">
+                  <i class="fa-solid fa-list-ul me-1"></i>Itens na Lista para Pagamento
+                </h6>
+                <div class="table-responsive border rounded" style="max-height: 200px; overflow-y: auto;">
+                  <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light small">
+                      <tr>
+                        <th>Produto</th>
+                        <th class="text-center" style="width: 90px;">Qtd</th>
+                        <th class="text-end">Unitário</th>
+                        <th class="text-end">Subtotal</th>
+                        <th class="text-center" style="width: 50px;">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody id="corpoListaVendaAvulsa">
+                      <tr>
+                        <td colspan="5" class="text-center text-muted py-3 small">
+                          Nenhum produto incluído na lista. Escolha acima e clique em <strong>Incluir</strong>.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-                <div class="col-8">
-                  <label for="forma_modal_vr" class="form-label fw-bold">Forma Pagto:</label>
+              </div>
+
+              <!-- Forma de Pagamento e Desconto -->
+              <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                  <label for="forma_modal_vr" class="form-label small fw-bold">Forma de Pagamento:</label>
                   <select name="forma_pagamento" id="forma_modal_vr" class="form-select form-select-lg fw-bold" required onchange="calcularVendaAvulsaModal()">
                     <option value="DINHEIRO" selected>💵 Dinheiro</option>
                     <option value="PIX">⚡ PIX</option>
-                    <option value="CARTAO_DEBITO">💳 Débito</option>
-                    <option value="CARTAO_CREDITO">💳 Crédito</option>
+                    <option value="CARTAO_DEBITO">💳 Cartão de Débito</option>
+                    <option value="CARTAO_CREDITO">💳 Cartão de Crédito</option>
                   </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="desconto_modal_vr" class="form-label small fw-bold">Desconto (R$):</label>
+                  <input type="number" step="0.01" min="0" class="form-control form-control-lg text-center fw-bold" id="desconto_modal_vr" name="desconto" value="0.00" oninput="calcularVendaAvulsaModal()">
                 </div>
               </div>
 
+              <!-- Troco para Dinheiro -->
               <div class="row g-2 mb-3" id="campoDinheiroModalVR">
                 <div class="col-6">
                   <label for="dinheiro_modal_vr" class="form-label small fw-bold">Cédula Entregue (R$):</label>
@@ -602,15 +645,20 @@
                 </div>
               </div>
 
+              <!-- Total a Cobrar -->
               <div class="p-3 bg-success-subtle border border-success rounded text-center">
-                <small class="text-uppercase fw-bold text-success d-block">Total a Cobrar</small>
+                <small class="text-uppercase fw-bold text-success d-block">Total a Cobrar da Lista</small>
                 <h3 class="fw-bold text-success mb-0" id="total_modal_vr">R$ 0,00</h3>
               </div>
             </div>
+
             <div class="modal-footer bg-light">
+              <button type="button" class="btn btn-outline-danger me-auto" onclick="limparListaVR()">
+                <i class="fa-solid fa-trash-can me-1"></i>Limpar Lista
+              </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-success fw-bold px-4">
-                <i class="fa-solid fa-check me-1"></i> Confirmar e Registrar Venda
+              <button type="submit" class="btn btn-success fw-bold px-4" id="btnConfirmarVendaAvulsa" disabled>
+                <i class="fa-solid fa-check me-1"></i> Confirmar e Registrar Pagamento Total
               </button>
             </div>
           </form>
@@ -643,6 +691,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // ==========================================
+    // 1. CÁLCULOS DO CHECKOUT DE COMANDAS
+    // ==========================================
     function calcularSaldoRealAtual() {
       const subtotalEl = document.getElementById('subtotalBase');
       if (!subtotalEl) return { subtotal: 0, taxa: 0, saldoRestanteReal: 0 };
@@ -669,8 +720,10 @@
       const valorAbater = parseFloat(document.getElementById('valor_abater').value) || 0;
       const dinheiroEntregue = parseFloat(document.getElementById('dinheiro_entregue').value) || 0;
 
-      document.getElementById('displayValorTaxa').innerText = 'R$ ' + taxa.toFixed(2).replace('.', ',');
-      document.getElementById('saldoRestanteDisplay').innerText = 'R$ ' + saldoRestanteReal.toFixed(2).replace('.', ',');
+      const elTaxa = document.getElementById('displayValorTaxa');
+      const elSaldo = document.getElementById('saldoRestanteDisplay');
+      if (elTaxa) elTaxa.innerText = 'R$ ' + taxa.toFixed(2).replace('.', ',');
+      if (elSaldo) elSaldo.innerText = 'R$ ' + saldoRestanteReal.toFixed(2).replace('.', ',');
 
       if (formaPagamento === 'DINHEIRO') {
         const troco = Math.max(0, dinheiroEntregue - valorAbater);
@@ -719,45 +772,159 @@
       const forma = document.getElementById('forma_pagamento').value;
       const campoDinheiro = document.getElementById('campoDinheiro');
       if (campoDinheiro) {
-        if (forma === 'DINHEIRO') {
-          campoDinheiro.style.display = 'flex';
-        } else {
-          campoDinheiro.style.display = 'none';
-        }
+        campoDinheiro.style.display = forma === 'DINHEIRO' ? 'flex' : 'none';
       }
       recalcularTotal();
     }
 
-    function calcularVendaAvulsaModal() {
+    // ==========================================
+    // 2. CARRINHO MULTI-ITENS (VENDA AVULSA)
+    // ==========================================
+    let listaItensVR = [];
+
+    function adicionarProdutoListaVR() {
       const select = document.getElementById('produto_modal_vr');
-      if (!select) return;
+      const qtdInput = document.getElementById('qtd_modal_vr');
+      if (!select || !select.value) {
+        alert('Selecione um produto antes de incluir na lista.');
+        return;
+      }
+
       const opt = select.options[select.selectedIndex];
-      const preco = opt ? parseFloat(opt.getAttribute('data-preco')) || 0 : 0;
-      const qtd = parseInt(document.getElementById('qtd_modal_vr').value) || 1;
-      const total = preco * qtd;
+      const produtoId = select.value;
+      const nome = opt.getAttribute('data-nome') || opt.text.split('—')[0].trim();
+      const preco = parseFloat(opt.getAttribute('data-preco')) || 0;
+      const quantidade = Math.max(1, parseInt(qtdInput.value) || 1);
 
-      document.getElementById('total_modal_vr').innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
-
-      const forma = document.getElementById('forma_modal_vr').value;
-      const campoDinheiro = document.getElementById('campoDinheiroModalVR');
-      if (forma === 'DINHEIRO') {
-        campoDinheiro.style.display = 'flex';
-        const entregue = parseFloat(document.getElementById('dinheiro_modal_vr').value) || 0;
-        const troco = Math.max(0, entregue - total);
-        document.getElementById('troco_modal_vr').innerText = 'R$ ' + troco.toFixed(2).replace('.', ',');
+      const itemExistente = listaItensVR.find(item => String(item.produto_id) === String(produtoId));
+      if (itemExistente) {
+        itemExistente.quantidade += quantidade;
       } else {
-        campoDinheiro.style.display = 'none';
+        listaItensVR.push({
+          produto_id: produtoId,
+          nome: nome,
+          preco: preco,
+          quantidade: quantidade
+        });
+      }
+
+      select.selectedIndex = 0;
+      qtdInput.value = 1;
+      renderizarListaVR();
+    }
+
+    function alterarQtdItemVR(index, delta) {
+      if (!listaItensVR[index]) return;
+      listaItensVR[index].quantidade += delta;
+      if (listaItensVR[index].quantidade <= 0) {
+        listaItensVR.splice(index, 1);
+      }
+      renderizarListaVR();
+    }
+
+    function removerItemListaVR(index) {
+      listaItensVR.splice(index, 1);
+      renderizarListaVR();
+    }
+
+    function limparListaVR() {
+      listaItensVR = [];
+      renderizarListaVR();
+    }
+
+    function renderizarListaVR() {
+      const tbody = document.getElementById('corpoListaVendaAvulsa');
+      const btnConfirmar = document.getElementById('btnConfirmarVendaAvulsa');
+      if (!tbody) return;
+
+      tbody.innerHTML = '';
+
+      if (listaItensVR.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center text-muted py-3 small">
+              Nenhum produto incluído na lista. Escolha acima e clique em <strong>Incluir</strong>.
+            </td>
+          </tr>
+        `;
+        if (btnConfirmar) btnConfirmar.disabled = true;
+        calcularVendaAvulsaModal(true);
+        return;
+      }
+
+      if (btnConfirmar) btnConfirmar.disabled = false;
+
+      listaItensVR.forEach((item, idx) => {
+        const subtotal = item.preco * item.quantidade;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <strong class="small">${item.nome}</strong>
+            <input type="hidden" name="itens[${idx}][produto_id]" value="${item.produto_id}">
+            <input type="hidden" name="itens[${idx}][quantidade]" value="${item.quantidade}">
+          </td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-outline-secondary py-0 px-2" onclick="alterarQtdItemVR(${idx}, -1)">-</button>
+              <span class="btn btn-light disabled fw-bold py-0 px-2 text-dark">${item.quantidade}</span>
+              <button type="button" class="btn btn-outline-secondary py-0 px-2" onclick="alterarQtdItemVR(${idx}, 1)">+</button>
+            </div>
+          </td>
+          <td class="text-end small">R$ ${item.preco.toFixed(2).replace('.', ',')}</td>
+          <td class="text-end fw-bold small">R$ ${subtotal.toFixed(2).replace('.', ',')}</td>
+          <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0" onclick="removerItemListaVR(${idx})">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      calcularVendaAvulsaModal(true);
+    }
+
+    function calcularVendaAvulsaModal(atualizarCedulaPadrao = false) {
+      const subtotalBruto = listaItensVR.reduce((soma, i) => soma + (i.preco * i.quantidade), 0);
+      const descontoEl = document.getElementById('desconto_modal_vr');
+      const desconto = descontoEl ? (parseFloat(descontoEl.value) || 0) : 0;
+      const total = Math.max(0, subtotalBruto - desconto);
+
+      const totalDisplay = document.getElementById('total_modal_vr');
+      if (totalDisplay) {
+        totalDisplay.innerText = 'R$ ' + total.toFixed(2).replace('.', ',');
+      }
+
+      const formaEl = document.getElementById('forma_modal_vr');
+      const forma = formaEl ? formaEl.value : 'DINHEIRO';
+      const campoDinheiro = document.getElementById('campoDinheiroModalVR');
+      const inputDinheiro = document.getElementById('dinheiro_modal_vr');
+
+      if (campoDinheiro) {
+        if (forma === 'DINHEIRO') {
+          campoDinheiro.style.display = 'flex';
+          if (atualizarCedulaPadrao && inputDinheiro) {
+            inputDinheiro.value = total.toFixed(2);
+          }
+          const entregue = inputDinheiro ? (parseFloat(inputDinheiro.value) || 0) : 0;
+          const troco = Math.max(0, entregue - total);
+          document.getElementById('troco_modal_vr').innerText = 'R$ ' + troco.toFixed(2).replace('.', ',');
+        } else {
+          campoDinheiro.style.display = 'none';
+        }
       }
     }
 
+    // ==========================================
+    // 3. ALTERNÂNCIA E CÁLCULO DE RATEIO NO FECHAMENTO
+    // ==========================================
     function aoMudarModoRateio() {
       const modoPorGarcomEl = document.getElementById('modoPorGarcom');
-      if (!modoPorGarcomEl) return;
-      const modoPorGarcom = modoPorGarcomEl.checked;
       const painelGarcom = document.getElementById('painelPorGarcom');
       const painelTurno = document.getElementById('painelRateioTurno');
+      if (!modoPorGarcomEl || !painelGarcom || !painelTurno) return;
 
-      if (modoPorGarcom) {
+      if (modoPorGarcomEl.checked) {
         painelGarcom.classList.remove('d-none');
         painelTurno.classList.add('d-none');
       } else {
@@ -768,20 +935,26 @@
     }
 
     function calcularRateioIgual() {
-      const totalTaxa = <%= (resumoTurno && resumoTurno.totalTaxas) ? resumoTurno.totalTaxas : 0 %>;
-      const checks = document.querySelectorAll('.check-funcionario:checked');
-      const qtd = checks.length;
-      const valorPorPessoa = qtd > 0 ? (totalTaxa / qtd) : 0;
-      const prevEl = document.getElementById('previsaoPorPessoa');
-      if (prevEl) {
-        prevEl.innerText = 'R$ ' + valorPorPessoa.toFixed(2).replace('.', ',');
+      const inputTaxaTurno = document.querySelector('input[name="total_taxa_turno"]');
+      const totalTaxa = inputTaxaTurno ? (parseFloat(inputTaxaTurno.value) || 0) : 0;
+      const selecionados = document.querySelectorAll('.check-funcionario:checked');
+      const displayPrevisao = document.getElementById('previsaoPorPessoa');
+
+      if (!displayPrevisao) return;
+
+      if (selecionados.length === 0 || totalTaxa <= 0) {
+        displayPrevisao.innerText = 'R$ 0,00';
+        return;
       }
+
+      const valorIndividual = totalTaxa / selecionados.length;
+      displayPrevisao.innerText = 'R$ ' + valorIndividual.toFixed(2).replace('.', ',');
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      if (document.getElementById('subtotalBase')) {
-        recalcularTotal();
-      }
+    // Inicializa os cálculos assim que a página carrega
+    document.addEventListener('DOMContentLoaded', function () {
+      calcularRateioIgual();
+      recalcularTotal();
     });
   </script>
 </body>

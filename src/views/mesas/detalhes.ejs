@@ -25,6 +25,21 @@
     <%- include('../partials/_sidebar') %>
 
     <main class="flex-grow-1 p-4">
+      <!-- Alertas de Erro e Sucesso -->
+      <% if (typeof erro !== 'undefined' && erro) { %>
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-4" role="alert">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i><strong>Atenção:</strong> <%= erro %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      <% } %>
+
+      <% if (typeof msg !== 'undefined' && msg) { %>
+        <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
+          <i class="fa-solid fa-circle-check me-2"></i><%= msg %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      <% } %>
+
       <!-- Topo: Informações da Mesa e Encerramento -->
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
         <div>
@@ -32,7 +47,8 @@
             <i class="fa-solid fa-arrow-left me-1"></i> Voltar ao Salão
           </a>
           <h2 class="fw-bold mb-0 text-dark">
-            Mesa <%= comanda.mesa_numero %> - <span class="text-danger"><%= comanda.nome_cliente || 'Cliente' %></span>
+            Mesa <%= comanda.mesa_numero %> -
+            <span class="text-danger"><%= comanda.nome_cliente || 'Cliente' %></span>
           </h2>
           <small class="text-muted">
             <i class="fa-regular fa-clock me-1"></i> Aberta em: <%= new Date(comanda.data_abertura).toLocaleString('pt-BR') %> 
@@ -45,9 +61,17 @@
           <div class="text-end">
             <small class="text-muted d-block text-uppercase fw-bold">Conta Atual</small>
             <h2 class="fw-bold text-success mb-0">
-              R\$ <%= Number(comanda.valor_total).toFixed(2).replace('.', ',') %>
+              R$ <%= Number(comanda.valor_total).toFixed(2).replace('.', ',') %>
             </h2>
           </div>
+
+          <!-- Botão Imprimir Pré-Conta -->
+          <% if (itens && itens.length > 0) { %>
+            <a href="/impressao/conta/<%= comanda.id %>" target="_blank" class="btn btn-outline-dark btn-lg fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-2">
+              <i class="fa-solid fa-print fa-lg"></i>
+              <span>Imprimir Pré-Conta</span>
+            </a>
+          <% } %>
 
           <!-- Botão Cancelar Comanda -->
           <% if (!jaEnviadoParaProducao && comanda.status === 'ABERTA') { %>
@@ -121,24 +145,34 @@
                   <i class="fa-solid fa-store me-1"></i> <strong>Item de Caixa:</strong> Entregue direto ao cliente. Não vai para grelha nem bar.
                 </div>
 
-                <form action="/mesas/comanda/<%= comanda.id %>/adicionar" method="POST">
+                <form action="/mesas/comanda/<%= comanda.id %>/adicionar" method="POST" onsubmit="return validarEstoqueAntesDeEnviar();">
                   <!-- SELETOR DE PRODUTOS -->
                   <div class="mb-3">
                     <label for="produto_id" class="form-label fw-bold">2. Selecione o Produto:</label>
                     <select name="produto_id" id="produto_id" class="form-select form-select-lg" required onchange="aoMudarProduto()">
                       <option value="" disabled selected>Escolha um produto...</option>
-                      <% produtos.forEach(p => { %>
-                        <option value="<%= p.id %>" data-categoria="<%= p.categoria_id %>">
-                          <%= p.nome %> — R\$ <%= Number(p.preco).toFixed(2).replace('.', ',') %>
+                      <% produtos.forEach(p => { 
+                           const qtdEst = Number(p.quantidade_estoque) || 0;
+                           const semEstoque = qtdEst <= 0;
+                      %>
+                        <option 
+                          value="<%= p.id %>" 
+                          data-categoria="<%= p.categoria_id %>"
+                          data-estoque="<%= qtdEst %>"
+                          data-nome="<%= p.nome %>"
+                          <%= semEstoque ? 'disabled' : '' %>
+                        >
+                          <%= p.nome %> — R$ <%= Number(p.preco).toFixed(2).replace('.', ',') %> <%= semEstoque ? '🚫 [ESGOTADO]' : '(Estoque: ' + qtdEst + ' un.)' %>
                         </option>
                       <% }) %>
                     </select>
+                    <small id="infoSaldoProduto" class="fw-bold d-block mt-1 text-secondary"></small>
                   </div>
 
                   <div class="row g-2 mb-3">
                     <div class="col-5">
                       <label for="quantidade" class="form-label fw-bold">Quantidade:</label>
-                      <input type="number" class="form-control form-control-lg text-center fw-bold" id="quantidade" name="quantidade" value="1" min="1" required>
+                      <input type="number" class="form-control form-control-lg text-center fw-bold" id="quantidade" name="quantidade" value="1" min="1" required oninput="validarQuantidadeDigitada()">
                     </div>
                     <div class="col-7" id="boxPontoCarne">
                       <label for="ponto_carne" class="form-label fw-bold">Ponto da Carne:</label>
@@ -156,7 +190,7 @@
                     <input type="text" class="form-control" id="observacao" name="observacao" placeholder="Ex: sem cebola, copo com gelo...">
                   </div>
 
-                  <button type="submit" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm">
+                  <button type="submit" id="btnIncluirItem" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm">
                     <i class="fa-solid fa-plus me-1"></i> Incluir na Mesa
                   </button>
                 </form>
@@ -239,14 +273,14 @@
                             <span class="badge bg-secondary fs-6"><%= item.quantidade %></span>
                           </td>
                           <td class="text-end text-muted">
-                            R\$ <%= Number(item.preco_unitario).toFixed(2).replace('.', ',') %>
+                            R$ <%= Number(item.preco_unitario).toFixed(2).replace('.', ',') %>
                           </td>
                           <td class="text-end fw-bold text-dark">
-                            R\$ <%= Number(item.valor_total).toFixed(2).replace('.', ',') %>
+                            R$ <%= Number(item.valor_total).toFixed(2).replace('.', ',') %>
                           </td>
                           <td class="text-center">
                             <% if ((item.status_preparo === 'RASCUNHO' || item.categoria_id === 4) && comanda.status === 'ABERTA') { %>
-                              <form action="/mesas/comanda/<%= comanda.id %>/remover/<%= item.id %>" method="POST" onsubmit="return confirm('Remover este item?');">
+                              <form action="/mesas/comanda/<%= comanda.id %>/remover/<%= item.id %>" method="POST" onsubmit="return confirm('Remover este item e devolver ao estoque?');">
                                 <button type="submit" class="btn btn-outline-danger btn-sm border-0" title="Remover item">
                                   <i class="fa-solid fa-trash"></i>
                                 </button>
@@ -265,17 +299,27 @@
 
             <!-- Rodapé do Card -->
             <% if (itens.length > 0) { %>
-              <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center">
+              <div class="card-footer bg-light p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <% if (comanda.status === 'AGUARDANDO_PAGAMENTO') { %>
                   <span class="text-muted small"><i class="fa-solid fa-clock me-1"></i>Encerrada pelo atendente. Pagamento pendente no Caixa.</span>
-                  <a href="/mesas" class="btn btn-outline-secondary fw-bold px-4">Voltar ao Salão</a>
+                  <div class="d-flex gap-2">
+                    <a href="/impressao/conta/<%= comanda.id %>" target="_blank" class="btn btn-outline-dark fw-bold px-3">
+                      <i class="fa-solid fa-print me-1"></i> Reimprimir Pré-Conta
+                    </a>
+                    <a href="/mesas" class="btn btn-outline-secondary fw-bold px-4">Voltar ao Salão</a>
+                  </div>
                 <% } else if (podeFecharConta) { %>
                   <span class="text-success small fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Todos os pedidos prontos/entregues!</span>
-                  <form action="/mesas/comanda/<%= comanda.id %>/fechar-conta" method="POST" onsubmit="return confirm('Confirmar encerramento e enviar para o Caixa?');">
-                    <button type="submit" class="btn btn-success fw-bold px-4">
-                      <i class="fa-solid fa-check-to-slot me-1"></i> Encerrar Atendimento
-                    </button>
-                  </form>
+                  <div class="d-flex gap-2">
+                    <a href="/impressao/conta/<%= comanda.id %>" target="_blank" class="btn btn-outline-dark fw-bold px-3">
+                      <i class="fa-solid fa-print me-1"></i> Imprimir Pré-Conta
+                    </a>
+                    <form action="/mesas/comanda/<%= comanda.id %>/fechar-conta" method="POST" onsubmit="return confirm('Confirmar encerramento e enviar para o Caixa?');">
+                      <button type="submit" class="btn btn-success fw-bold px-4">
+                        <i class="fa-solid fa-check-to-slot me-1"></i> Encerrar Atendimento
+                      </button>
+                    </form>
+                  </div>
                 <% } else { %>
                   <span class="text-danger small fw-bold">
                     <i class="fa-solid fa-triangle-exclamation me-1"></i>
@@ -295,7 +339,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Filtro instantâneo por categoria
     function filtrarCategoria(catId, btnEl) {
       document.querySelectorAll('.btn-filtro-cat').forEach(b => {
         b.classList.remove('active', 'btn-danger');
@@ -303,18 +346,19 @@
           b.classList.add('btn-outline-secondary');
         }
       });
-      btnEl.classList.add('active', 'btn-danger');
+      if (btnEl) btnEl.classList.add('active', 'btn-danger');
 
       const select = document.getElementById('produto_id');
+      if (!select) return;
       const options = select.querySelectorAll('option');
       let primeiroValido = null;
 
       options.forEach(opt => {
-        if (!opt.value) return; // opção default
+        if (!opt.value) return;
         const optCat = opt.getAttribute('data-categoria');
         if (catId === 'TODOS' || optCat == catId) {
           opt.style.display = 'block';
-          if (!primeiroValido) primeiroValido = opt;
+          if (!primeiroValido && !opt.disabled) primeiroValido = opt;
         } else {
           opt.style.display = 'none';
         }
@@ -330,10 +374,15 @@
 
     function aoMudarProduto() {
       const select = document.getElementById('produto_id');
+      if (!select) return;
       const opt = select.options[select.selectedIndex];
       const cat = opt ? opt.getAttribute('data-categoria') : null;
+      const estoque = opt && opt.value ? parseInt(opt.getAttribute('data-estoque') || '0', 10) : 0;
       const boxCarne = document.getElementById('boxPontoCarne');
       const alerta = document.getElementById('alertaCheckout');
+      const inputQtd = document.getElementById('quantidade');
+      const infoSaldo = document.getElementById('infoSaldoProduto');
+      const btnIncluir = document.getElementById('btnIncluirItem');
 
       if (cat === '4') {
         alerta.classList.remove('d-none');
@@ -347,11 +396,75 @@
         alerta.classList.add('d-none');
         boxCarne.style.display = 'block';
       }
+
+      if (opt && opt.value) {
+        inputQtd.max = estoque;
+        if (parseInt(inputQtd.value, 10) > estoque) {
+          inputQtd.value = Math.max(1, estoque);
+        }
+        if (estoque <= 0) {
+          infoSaldo.className = 'fw-bold d-block mt-1 text-danger';
+          infoSaldo.innerText = 'Produto esgotado no estoque!';
+          if (btnIncluir) btnIncluir.disabled = true;
+        } else {
+          infoSaldo.className = 'fw-bold d-block mt-1 text-success';
+          infoSaldo.innerText = 'Disponível em estoque: ' + estoque + ' un.';
+          if (btnIncluir) btnIncluir.disabled = false;
+        }
+      } else {
+        infoSaldo.innerText = '';
+        if (btnIncluir) btnIncluir.disabled = true;
+      }
     }
 
-    // Inicializa filtrando Espetinhos por padrão
+    function validarQuantidadeDigitada() {
+      const select = document.getElementById('produto_id');
+      const inputQtd = document.getElementById('quantidade');
+      const infoSaldo = document.getElementById('infoSaldoProduto');
+      if (!select || !inputQtd) return;
+
+      const opt = select.options[select.selectedIndex];
+      if (!opt || !opt.value) return;
+
+      const estoque = parseInt(opt.getAttribute('data-estoque') || '0', 10);
+      const qtd = parseInt(inputQtd.value || '0', 10);
+
+      if (qtd > estoque) {
+        infoSaldo.className = 'fw-bold d-block mt-1 text-danger';
+        infoSaldo.innerText = 'Limite excedido! Máximo disponível no estoque: ' + estoque + ' un.';
+      } else {
+        infoSaldo.className = 'fw-bold d-block mt-1 text-success';
+        infoSaldo.innerText = 'Disponível em estoque: ' + estoque + ' un.';
+      }
+    }
+
+    function validarEstoqueAntesDeEnviar() {
+      const select = document.getElementById('produto_id');
+      const inputQtd = document.getElementById('quantidade');
+      if (!select || !select.value) {
+        alert('Selecione um produto disponível.');
+        return false;
+      }
+      const opt = select.options[select.selectedIndex];
+      const estoque = parseInt(opt.getAttribute('data-estoque') || '0', 10);
+      const nome = opt.getAttribute('data-nome') || 'Produto';
+      const qtd = parseInt(inputQtd.value || '0', 10);
+
+      if (estoque <= 0) {
+        alert('O produto "' + nome + '" está esgotado no estoque.');
+        return false;
+      }
+      if (qtd > estoque) {
+        alert('Estoque insuficiente para "' + nome + '"!\nSolicitado: ' + qtd + ' un.\nDisponível: ' + estoque + ' un.');
+        inputQtd.value = estoque;
+        return false;
+      }
+      return true;
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
-      filtrarCategoria(1, document.querySelector('.btn-filtro-cat'));
+      const btnInicial = document.querySelector('.btn-filtro-cat');
+      if (btnInicial) filtrarCategoria(1, btnInicial);
     });
   </script>
 </body>
